@@ -1,12 +1,15 @@
 import dash
 import dash_html_components as html
 import dash_core_components as dcc
-import plotly.express as px
+from dash.dependencies import Input, Output, State
 
-from dash.dependencies import Input, Output
+import plotly.express as px
+import pandas as pd
+import base64
+import io
+
 from app import app
 from app import server
-
 import database_interface as dbi
 
 def render_tab():
@@ -77,8 +80,34 @@ def render_tab():
             ),
             id='new-concentration-container',
             style={'display': 'none'}
-        )
+        ),
 
+        dcc.Upload(
+            id='upload-data',
+            children=html.Div([
+                'Drag and Drop or ',
+                html.A('Select Files')
+            ]),
+            style={
+                'height': '60px',
+                'lineHeight': '60px',
+                'borderWidth': '1px',
+                'borderStyle': 'dashed',
+                'borderRadius': '5px',
+                'textAlign': 'center',
+                'margin': '10px'
+            },
+            multiple=False # Allow multiple files to be uploaded
+        ),
+
+        html.Button(
+            'Import',
+            id='submit-import',
+            n_clicks=0
+        ),
+
+
+        html.H1(id='intermediate-value')
 
         # html.Div(id='dataset-spectrum'),
     ])
@@ -156,3 +185,75 @@ def update_concentration_input(dataset_value, molecule_value, concentration_valu
                 return options, enabled_style, disabled_style
     else:
         return options, disabled_style, disabled_style
+
+
+def parse_data(contents, filename):
+    content_type, content_string = contents.split(',')
+
+    decoded = base64.b64decode(content_string)
+    try:
+        if 'csv' in filename:
+            # Assume that the user uploaded a CSV or TXT file
+            df = pd.read_csv(
+                io.StringIO(decoded.decode('utf-8')))
+        elif 'xls' in filename:
+            # Assume that the user uploaded an excel file
+            df = pd.read_excel(io.BytesIO(decoded))
+        elif 'txt' or 'tsv' in filename:
+            # Assume that the user upl, delimiter = r'\s+'oaded an excel file
+            df = pd.read_csv(
+                io.StringIO(decoded.decode('utf-8')), delimiter = r'\s+')
+    except Exception as e:
+        print(e)
+        return html.Div([
+            'There was an error processing this file.'
+        ])
+
+    return df
+
+
+@app.callback(Output('intermediate-value', 'children'),
+              Input('submit-import', 'n_clicks'),
+              State('select-dataset', 'value'),
+              State('new-dataset', 'value'),
+              State('select-molecule', 'value'),
+              State('new-molecule', 'value'),
+              State('select-concentration', 'value'),
+              State('new-concentration', 'value'),
+              State('upload-data', 'contents'),
+              State('upload-data', 'filename'))
+def import_data(n_clicks, select_dataset, new_dataset, select_molecule, new_molecule, select_concentration, new_concentration, contents, filename):
+
+    df = pd.DataFrame()
+    dataset_label = None
+    molecule_label = None
+    concentration_label = None
+
+    if select_dataset == 'NEW':
+        dataset_label = new_dataset
+    else:
+        dataset_label = select_dataset
+
+    if select_molecule == 'NEW':
+        molecule_label = new_molecule
+    else:
+        molecule_label = select_molecule
+
+    if select_concentration == 'NEW':
+        concentration_label = new_concentration
+    else:
+        concentration_label = select_concentration
+
+
+    if contents:
+        contents = contents
+        filename = filename
+        df = parse_data(contents, filename)
+
+
+    if dataset_label!=None and molecule_label!=None and concentration_label!=None and not df.empty:
+        ret = 'Import Success'
+    else:
+        ret = 'No Import Yet'
+
+    return ret
