@@ -1,6 +1,7 @@
 import dash_html_components as html
 import dash_core_components as dcc
 import plotly.express as px
+import train
 
 from dash.dependencies import Input, Output
 from app import app
@@ -49,9 +50,7 @@ def render_content(tab):
             html.H3('Tab content 2')
         ])
     elif tab == 'tab-3':
-        return html.Div([
-            html.H3('Tab content 3')
-        ])
+        return train.tabTrain()
 
 
 @app.callback(Output('label-entry', 'children'),
@@ -146,6 +145,7 @@ def new_concentration_entry(value):
         return html.Div([
 
         ])
+
 
 # must have submit button callback 
 ## consider input from new-concentration, select-molecule, new-molecule, select-concentration, new-concentration id's

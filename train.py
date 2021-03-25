@@ -37,6 +37,7 @@ colors = {
 def tabTrain():
     return html.Div([
         html.H3('Upload training data'),
+        dcc.Graph(id='test-data'),
         dcc.Upload(
             id='test-upload',
             children=html.Div([
@@ -52,77 +53,76 @@ def tabTrain():
                 'textAlign': 'center',
                 'margin': '10px'
             },
-            # Allow multiple files to be uploaded
             multiple=False
-        ),
-        dcc.Graph(id='test-data'),
-        # html.Div(id='test-table')
-        html.Div(
-            children = [
-                html.H2('Scalers'),
-                dcc.Checklist(
-                    id='scalers-check',
-                    options=[
-                        {'label': 'None', 'value': 'None'},
-                        {'label': 'Standard', 'value': 'stdScaler'},
-                        {'label': 'Min-Max', 'value': 'MinMaxScaler'},
-                        {'label': 'Max Absolute Value', 'value': 'MaxAbsScaler'}
-                    ]
-                ),
-            ],
-            style={'width': '32%', 'display': 'inline-block', 'vertical-align': 'text-top'}
-            ),
+        ),  
 
         html.Div(
-            children = [
-                html.H2('Decomposers'),
-                dcc.Checklist(
-                    id='decomp-check',
-                    options=[
-                        {'label': 'None', 'value': 'None'},
-                        {'label': 'Linear PCA', 'value': 'linearPCA'},
-                        {'label': 'Polynomial PCA', 'value': 'polyPCA'},
-                        {'label': 'Sigmoid PCA', 'value': 'sigmoidPCA'},
-                        {'label': 'Cosine PCA', 'value': 'cosinePCA'}
+            [
+                dbc.Row(dbc.Col(html.H2('Pipeline Assembly'))),
+                dbc.Row(
+                    [
+                        dbc.Col(html.H3('Scalers')),
+                        dbc.Col(html.H3('Decomposers')),
+                        dbc.Col(html.H3('Classifiers'))
                     ]
                 ),
-                html.Hr(),
-                html.Div('Number of PCA Components:'),
-                dcc.Input(
-                    id='PCA_n',
-                    type='number',
-                    value=3,
-                    min = 1
-                ),
-            ],
-            style={'width': '32%', 'display': 'inline-block', 'vertical-align': 'text-top'}
-            ),
-        
-        # html.H2('Choose Decomposers'),
-        # dcc.Checklist(
-        #     id='decomp-check',
-        #     options=[
-        #         {'label': 'None', 'value': 'None'},
-        #         {'label': 'Linear PCA', 'value': 'linearPCA'},
-        #         {'label': 'Polynomial PCA', 'value': 'polyPCA'},
-        #         {'label': 'Sigmoid PCA', 'value': 'sigmoidPCA'},
-        #         {'label': 'Cosine PCA', 'value': 'cosinePCA'}
-        #     ]
-        # ),
-        
+                dbc.Row(
+                    [
+                        dbc.Col(html.Div(
+                            dbc.Checklist(
+                                id='scalers-check',
+                                options=[
+                                    {'label': 'None', 'value': 'None'},
+                                    {'label': 'Standard', 'value': 'stdScaler'},
+                                    {'label': 'Min-Max', 'value': 'MinMaxScaler'},
+                                    {'label': 'Max Absolute Value', 'value': 'MaxAbsScaler'}
+                                ]
+                            )
+                        )),
 
-        html.H2('Choose Classifiers'),
-        dcc.Checklist(
-            id='classif-check',
-            options=[
-                {'label': 'None', 'value': 'None'},
-                {'label': 'k-Nearest Neighbors', 'value': 'kNN'},
-                {'label': 'Support Vector Classifier', 'value': 'SVC'}
+                        dbc.Col(html.Div(
+                            children = [
+                            dbc.Checklist(
+                                id='decomp-check',
+                                options=[
+                                    {'label': 'None', 'value': 'None'},
+                                    {'label': 'Linear PCA', 'value': 'linearPCA'},
+                                    {'label': 'Polynomial PCA', 'value': 'polyPCA'},
+                                    {'label': 'Sigmoid PCA', 'value': 'sigmoidPCA'},
+                                    {'label': 'Cosine PCA', 'value': 'cosinePCA'}
+                                ]
+                            ),
+                            html.Div('Number of PCA Components:'),
+                            dcc.Input(
+                                id='PCA_n',
+                                type='number',
+                                value=3,
+                                min = 1
+                            )]
+                        )),
+
+                        dbc.Col(html.Div(
+                            dbc.Checklist(
+                                id='classif-check',
+                                options=[
+                                    {'label': 'None', 'value': 'None'},
+                                    {'label': 'k-Nearest Neighbors', 'value': 'kNN'},
+                                    {'label': 'Support Vector Classifier', 'value': 'SVC'}
+                                ]
+                            ),
+                        )),
+                    ]
+                )
             ]
         ),
+
+        html.Div(id='disp-choices'),  
         
-        html.Div(id='disp-choices')
-    ])
+    ],
+    style={ 'margin-left': '150px',
+            'margin-right': '150px'
+        }
+    )
 
 def parse_data(contents, filename):
     content_type, content_string = contents.split(',')
@@ -148,25 +148,6 @@ def display_test_data(contents, filename):
                 figure=px.line(x=test_DS.columns.values, y=list(test_DS.values[0]))
             )
 
-# @app.callback(Output('test-data', 'figure'),
-#             [
-#                 Input('test-upload', 'contents'),
-#                 Input('test-upload', 'filename')
-#             ])
-# def update_graph(contents, filename):
-#     fig = {
-#         'layout': go.Layout(
-#             plot_bgcolor=colors["graphBackground"],
-#             paper_bgcolor=colors["graphBackground"])
-#     }
-
-#     if contents:
-#         contents = contents[0]
-#         filename = filename[0]
-#         df = parse_data(contents, filename)
-#         # df = df.set_index(df.columns[0])
-#         fig = px.line(x=df.columns.values, y=(list)(df.values[0:5]))
-#     return fig
 @app.callback(  Output('disp-choices', 'children'),
                 Input('scalers-check', 'value'),
                 Input('decomp-check', 'value'),
