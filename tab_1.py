@@ -11,6 +11,7 @@ import io
 from app import app
 from app import server
 import database_interface as dbi
+import data_analysis as da
 
 def render_tab():
     dataset_options = [{'label': name, 'value': name} for name in dbi.list_datasets()]
@@ -45,7 +46,7 @@ def render_tab():
             )
         ],
             id='select-molecule-container',
-            style={'display': 'block'}
+            style={'display': 'none'}
         ),
 
         html.Div([
@@ -61,7 +62,6 @@ def render_tab():
 
         html.Br(),
 
-        # html.Label("Concentration"),
         html.Div([
             dcc.Dropdown(
                 id='select-concentration',
@@ -69,7 +69,7 @@ def render_tab():
         )
         ],
             id='select-concentration-container',
-            style={'display': 'block'}
+            style={'display': 'none'}
         ),
 
         html.Div(
@@ -100,16 +100,18 @@ def render_tab():
             multiple=False # Allow multiple files to be uploaded
         ),
 
+        
+        html.Div(id='import-spectra-container'),
+
         html.Button(
             'Import',
             id='submit-import',
             n_clicks=0
         ),
 
-
         html.H1(id='intermediate-value')
 
-        # html.Div(id='dataset-spectrum'),
+        
     ])
 
 @app.callback(Output('new-dataset-container', 'style'),
@@ -201,8 +203,7 @@ def parse_data(contents, filename):
             df = pd.read_excel(io.BytesIO(decoded))
         elif 'txt' or 'tsv' in filename:
             # Assume that the user upl, delimiter = r'\s+'oaded an excel file
-            df = pd.read_csv(
-                io.StringIO(decoded.decode('utf-8')), delimiter = r'\s+')
+            df = pd.read_csv(io.StringIO(decoded.decode('utf-8')))
     except Exception as e:
         print(e)
         return html.Div([
@@ -211,6 +212,28 @@ def parse_data(contents, filename):
 
     return df
 
+
+@app.callback(Output('import-spectra-container', 'children'),
+              [
+                  Input('upload-data', 'contents'),
+                  Input('upload-data', 'filename')
+              ])
+def update_graph(contents, filename):
+    if contents:
+        contents = contents
+        filename = filename
+        df = parse_data(contents, filename)
+        df = df.T
+        x_axis = df.iloc[0]
+        df.drop('Raman Shift', inplace=True)
+        df = df.T
+
+        return [
+            dcc.Graph(
+                id='import-spectra',
+                figure=px.line(df)
+            )
+        ]
 
 @app.callback(Output('intermediate-value', 'children'),
               Input('submit-import', 'n_clicks'),
@@ -231,28 +254,32 @@ def import_data(n_clicks, select_dataset, new_dataset, select_molecule, new_mole
 
     if select_dataset == 'NEW':
         dataset_label = new_dataset
-    else:
-        dataset_label = select_dataset
-
-    if select_molecule == 'NEW':
         molecule_label = new_molecule
-    else:
+        concentration_label = new_concentration
+    elif select_molecule == 'NEW':
+        dataset_label = select_dataset
+        molecule_label = new_molecule
+        concentration_label = new_concentration
+    elif select_concentration == 'NEW':
+        dataset_label = select_dataset
         molecule_label = select_molecule
-
-    if select_concentration == 'NEW':
         concentration_label = new_concentration
     else:
+        dataset_label = select_dataset
+        molecule_label = select_molecule
         concentration_label = select_concentration
 
+    dataset = dbi.select_dataset(dataset_label)         # should get either exisiting or empty dataframe
 
     if contents:
         contents = contents
         filename = filename
         df = parse_data(contents, filename)
-
-
+    print(dataset_label, molecule_label, concentration_label, df.empty)
     if dataset_label!=None and molecule_label!=None and concentration_label!=None and not df.empty:
-        ret = 'Import Success'
+        dataset = da.append_to_dataset(dataset, df, molecule_label, concentration_label)
+        dbi.store_dataset(dataset, dataset_label)
+        ret = 'Successful'
     else:
         ret = 'No Import Yet'
 
