@@ -1,7 +1,7 @@
 import dash_html_components as html
 import dash_core_components as dcc
 import plotly.express as px
-import train
+import Tab3, Tab2
 
 from dash.dependencies import Input, Output
 from app import app
@@ -46,11 +46,9 @@ def render_content(tab):
             html.Div(id='dataset-spectrum'),
         ])
     elif tab == 'tab-2':
-        return html.Div([
-            html.H3('Tab content 2')
-        ])
+        return Tab2.Train()
     elif tab == 'tab-3':
-        return train.tabTrain()
+        return Tab3.Test()
 
 
 @app.callback(Output('label-entry', 'children'),
