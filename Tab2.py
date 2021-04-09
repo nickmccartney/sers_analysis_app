@@ -1,5 +1,6 @@
 import dash_html_components as html
 import dash_core_components as dcc
+import dash_daq as daq
 import dash_bootstrap_components as dbc
 import plotly.express as px
 import dash
@@ -23,138 +24,166 @@ from sklearn import preprocessing
 from sklearn import decomposition
 from sklearn.svm import SVC
 
+from sklearn.decomposition import PCA   ### for explained variance
+
 
 def Train():
     dataset_options = [{'label': name, 'value': name} for name in dbi.list_datasets()]
     
     return html.Div(
-        [
-            dbc.Row(dbc.Col(html.Label("Dataset"))),
-            dbc.Row(dbc.Col(
-                dcc.Dropdown(
-                id='select-dataset-training',
-                options=dataset_options,
-                placeholder='Select a Dataset...')
-            )),
-            # 'div-disp-dataset'
-            
-            dbc.Row(dbc.Col(
-                html.Div(
-                    id = 'div-disp-dataset'
-                )
-            )),
-        
-            # dbc.Row(dbc.Col(html.H2('Pipeline Assembly'))),
-            # dbc.Row(
-            #     [
-            #         dbc.Col(html.H3('Scalers')),
-            #         dbc.Col(html.H3('Decomposers')),
-            #         dbc.Col(html.H3('Classifiers'))
-            #     ]
-            # ),
-            # dbc.Row(
-            #     [
-            #         dbc.Col(html.Div(
-            #             dbc.Checklist(
-            #                 id='scalers-check',
-            #                 options=[
-            #                     {'label': 'None', 'value': 'None'},
-            #                     {'label': 'Standard', 'value': 'stdScaler'},
-            #                     {'label': 'Min-Max', 'value': 'MinMaxScaler'},
-            #                     {'label': 'Max Absolute Value', 'value': 'MaxAbsScaler'}
-            #                 ]
-            #             )
-            #         )),
+        [        
+            dbc.Row(
+                [
+                    dbc.Col(html.Div(       ### Left hand PCA plot
+                            id = 'disp-dataset',
+                        ),
+                        width = 9
+                    ),
+                    
+                    dbc.Col(                ### ... and a pipe in the right hand (Pipeline assembly)
+                        html.Div([                          
+                            html.Div([
+                                html.H3('Dataset'),
+                                dcc.Dropdown(
+                                    id='dataset-training-select',
+                                    options=dataset_options,
+                                    placeholder='Select a Dataset...'
+                                ),
+                                dbc.Button(
+                                    "Advanced Options",
+                                    id="pipe-collapse-button",
+                                    # className="mb-3",
+                                    # color="primary",
+                                ),
+                                dbc.Collapse(
+                                    [
+                                    html.Hr(),
+                                    
+                                    html.Div([
+                                        html.H3('Scalers'),
+                                        dbc.RadioItems(
+                                            id='scalers-radio',
+                                            options=[
+                                                {'label': 'None', 'value': 'None'},
+                                                {'label': 'Standard', 'value': 'stdScaler'},
+                                                {'label': 'Min-Max', 'value': 'MinMaxScaler'},
+                                                {'label': 'Max Absolute Value', 'value': 'MaxAbsScaler'}
+                                            ],
+                                            value='MinMaxScaler',       ### Defaults currently for concentration
+                                        )
+                                    ]),
+                                    html.Hr(),
+                                    
+                                    html.Div([
+                                        html.H3('Decomposers'),
+                                        dbc.RadioItems(
+                                            id='decomp-radio',
+                                            options=[
+                                                {'label': 'None', 'value': 'None'},
+                                                {'label': 'Linear PCA', 'value': 'linearPCA'},
+                                                {'label': 'Polynomial PCA', 'value': 'polyPCA'},
+                                                {'label': 'Sigmoid PCA', 'value': 'sigmoidPCA'},
+                                                {'label': 'Cosine PCA', 'value': 'cosinePCA'}
+                                            ],
+                                            value='cosinePCA',       ### Defaults currently for concentration
+                                        ),
+                                        html.Div('# PCA Components:'),
+                                        dcc.Input(
+                                            id='PCA_n',
+                                            type='number',
+                                            value=3,
+                                            min = 1
+                                        )
+                                    ]),
+                                    html.Hr(),
 
-            #         dbc.Col(html.Div(
-            #             children = [
-            #             dbc.Checklist(
-            #                 id='decomp-check',
-            #                 options=[
-            #                     {'label': 'None', 'value': 'None'},
-            #                     {'label': 'Linear PCA', 'value': 'linearPCA'},
-            #                     {'label': 'Polynomial PCA', 'value': 'polyPCA'},
-            #                     {'label': 'Sigmoid PCA', 'value': 'sigmoidPCA'},
-            #                     {'label': 'Cosine PCA', 'value': 'cosinePCA'}
-            #                 ]
-            #             ),
-            #             html.Div('Number of PCA Components:'),
-            #             dcc.Input(
-            #                 id='PCA_n',
-            #                 type='number',
-            #                 value=3,
-            #                 min = 1
-            #             )]
-            #         )),
-
-            #         dbc.Col(html.Div(
-            #             dbc.Checklist(
-            #                 id='classif-check',
-            #                 options=[
-            #                     {'label': 'None', 'value': 'None'},
-            #                     {'label': 'k-Nearest Neighbors', 'value': 'kNN'},
-            #                     {'label': 'Support Vector Classifier', 'value': 'SVC'}
-            #                 ]
-            #             ),
-            #         )),
-            #     ]
-            # ),
-            # dbc.Row(dbc.Col(html.Div(id='disp-choices'))),
+                                    html.Div([
+                                        html.H3('Classifiers'),
+                                        dbc.RadioItems(
+                                            id='classif-radio',
+                                            options=[
+                                                {'label': 'None', 'value': 'None'},
+                                                {'label': 'k-Nearest Neighbors', 'value': 'kNN'},
+                                                {'label': 'Support Vector Classifier', 'value': 'SVC'}
+                                            ],
+                                            value='SVC',       ### Defaults currently for concentration
+                                        ),
+                                    ]),
+                                    ],
+                                    id="pipe-collapse",
+                                ),
+                                html.Div(id='disp-pipe-select')
+                            ]),
+                        ],
+                        style={
+                            'background-color': 'lightgrey',
+                            'padding': '25px'
+                        },
+                        ),
+                        # width = 'auto'
+                    ),
+                ]
+            ),
+            dbc.Row(dbc.Col(html.Div(id='disp-choices'))),
         ],
         
-        style={ 'margin-left': '150px',
-            'margin-right': '150px'
+        style={
+            'background-color': 'default',
+            'padding': '30px'
         }
     ),
     
-# @app.callback(  Output('disp-choices', 'children'),
-#                 Input('scalers-check', 'value'),
-#                 Input('decomp-check', 'value'),
-#                 Input('classif-check', 'value'),
-#                 Input('PCA_n', 'value')
-#             )
-# def display_choices(scalerList, decomposerList, classifierList, n):
-#     from sklearn import preprocessing
-#     scalers = { 'stdScaler': preprocessing.StandardScaler(),
-#                 'MinMaxScaler': preprocessing.MinMaxScaler(),
-#                 'MaxAbsScaler': preprocessing.MaxAbsScaler()}
+@app.callback(  Output('disp-choices', 'children'),
+                Input('scalers-radio', 'value'),
+                Input('decomp-radio', 'value'),
+                Input('classif-radio', 'value'),
+                Input('PCA_n', 'value')
+            )
+def display_choices(scaler_value, decomposer_value, classifier_value, n):
+    from sklearn import preprocessing
+    scalers = { 'stdScaler': preprocessing.StandardScaler(),
+                'MinMaxScaler': preprocessing.MinMaxScaler(),
+                'MaxAbsScaler': preprocessing.MaxAbsScaler()}
 
-#     from sklearn import decomposition
+    from sklearn import decomposition
     
-#     decomposers = { 'linearPCA': decomposition.KernelPCA(kernel='linear', n_components = n),
-#                     'polyPCA': decomposition.KernelPCA(kernel='poly', n_components = n),
-#                     'rbfPCA': decomposition.KernelPCA(kernel='rbf', n_components = n),
-#                     'sigmoidPCA': decomposition.KernelPCA(kernel='sigmoid', n_components = n),
-#                     'cosinePCA': decomposition.KernelPCA(kernel='cosine', n_components = n)}
+    decomposers = { 'linearPCA': decomposition.KernelPCA(kernel='linear', n_components = n),
+                    'polyPCA': decomposition.KernelPCA(kernel='poly', n_components = n),
+                    'rbfPCA': decomposition.KernelPCA(kernel='rbf', n_components = n),
+                    'sigmoidPCA': decomposition.KernelPCA(kernel='sigmoid', n_components = n),
+                    'cosinePCA': decomposition.KernelPCA(kernel='cosine', n_components = n)}
 
-#     from sklearn.neighbors import KNeighborsClassifier
-#     from sklearn.svm import SVC
-#     estimators = {  'kNN': KNeighborsClassifier(n_neighbors = 5),
-#                     'SVC': SVC()}
+    from sklearn.neighbors import KNeighborsClassifier
+    from sklearn.svm import SVC
+    estimators = {  'kNN': KNeighborsClassifier(n_neighbors = 5),
+                    'SVC': SVC()}
 
-#     # model = pipe.fit(X_values, y_labels)
-#     # pickle.dump(model, open('model.sav', 'wb'))
-#     # [str(scalers[i]) for i in scalerList]
-#     pipes = []
+    # model = pipe.fit(X_values, y_labels)
+    # pickle.dump(model, open('model.sav', 'wb'))
+    # [str(scalers[i]) for i in scaler_value]
+    pipes = []
 
-#     for i in scalerList:
-#         for j in decomposerList:
-#             for k in classifierList:
+    for i in scaler_value:
+        for j in decomposer_value:
+            for k in classifier_value:
                 
-#                 pipe = sklearn.pipeline.Pipeline([('scaler', scalers[i]), ('pca', decomposers[j]), ('est', estimators[k])])
-#                 pipes = [*pipes, pipe]
-#     # pickle.dump(pipe, open('model.sav', 'wb'))
-#     return html.Div([
-#         html.Div("You are using: " + ','.join([str(p) for p in pipes])),
-#         dbc.Button(
-#             "Confirm"
-#         )
-#     ]
-#     )
+                pipe = sklearn.pipeline.Pipeline([('scaler', scalers[i]), ('pca', decomposers[j]), ('est', estimators[k])])
+                pipes = [*pipes, pipe]
+    # pickle.dump(pipe, open('model.sav', 'wb'))
+    return html.Div([
+        html.Div("You are using: " + ','.join([str(p) for p in pipes])),
+        dbc.Button(
+            "Confirm"
+        )
+    ]
+    )
 
-@app.callback(Output('div-disp-dataset', 'children'),
-             Input('select-dataset-training', 'value'))
-def disp_dataset(dataset_value):
+@app.callback(  Output('disp-dataset', 'children'),
+                Input('dataset-training-select', 'value'),
+                Input('scalers-radio', 'value'),
+                Input('decomp-radio', 'value'),
+            )
+def display_dataset(dataset_value, scaler_value, decomposer_value):
     test_DS = dbi.select_dataset(dataset_value)
     df = test_DS.loc['Fentanyl : Heroin']
     
@@ -173,15 +202,37 @@ def disp_dataset(dataset_value):
     pca_pipe = Pipeline([('scaler', preprocessing.MinMaxScaler()), ('pca', decomposition.KernelPCA(kernel='cosine', n_components = 3))])
     pca_components = pca_pipe.fit_transform(X)
     
+    # testpca = PCA(n_components = 3).fit(X)
+    # exp_var_cumul = np.cumsum(testpca.explained_variance_ratio_)
+    
     return (
         html.Label("PCA plot using " + str(pca_pipe)),
         dcc.Graph(
-                id='pca-plot',
-                figure=
-                    px.scatter_3d(
-                    pca_components, x=0, y=1, z=2, color=df.index.get_level_values(0).values,
-                    labels={'0': 'PC 1', '1': 'PC 2', '2': 'PC 3', 'color': 'Concentration'}
-                ),
-                style={'height': '700px'}
+            id='pca-plot',
+            figure=
+                px.scatter_3d(
+                pca_components, x=0, y=1, z=2, color=df.index.get_level_values(0).values,
+                labels={'0': 'PC 1', '1': 'PC 2', '2': 'PC 3', 'color': 'Concentration'}
             ),
-        )
+            style={'height': '700px'}
+        ),
+        
+        # dcc.Graph(
+        #     id='var-plot',
+        #     figure = px.area(
+        #         x=range(1, exp_var_cumul.shape[0] + 1),
+        #         y=exp_var_cumul,
+        #         labels={"x": "# Components", "y": "Explained Variance"}
+        #     ),
+        # ),
+    )
+    
+@app.callback(
+    Output("pipe-collapse", "is_open"),
+    [Input("pipe-collapse-button", "n_clicks")],
+    [State("pipe-collapse", "is_open")],
+)
+def toggle_pipe_collapse(n, is_open):
+    if n:
+        return not is_open
+    return is_open
