@@ -24,8 +24,6 @@ from sklearn import preprocessing
 from sklearn import decomposition
 from sklearn.svm import SVC
 
-from sklearn.decomposition import PCA   ### for explained variance
-
 
 def Train():
     dataset_options = [{'label': name, 'value': name} for name in dbi.list_datasets()]
@@ -48,6 +46,24 @@ def Train():
                                     id='dataset-training-select',
                                     options=dataset_options,
                                     placeholder='Select a Dataset...'
+                                ),
+                                dbc.RadioItems(
+                                    id='task-radio',
+                                    options=[
+                                        {'label': 'Molecule', 'value': 'Molecule'},
+                                        {'label': 'Concentration', 'value': 'Concentration'},
+                                    ],
+                                    value='Molecule',
+                                ),
+                                dbc.Collapse(
+                                    [
+                                    dcc.Dropdown(
+                                        id='mol-select',
+                                        options=[],       ### populate options in callback from dataset select
+                                        placeholder='Select a Dataset...'
+                                    ),
+                                    ],
+                                    id='mol-collapse'
                                 ),
                                 dbc.Button(
                                     "Advanced Options",
@@ -133,7 +149,8 @@ def Train():
         }
     ),
     
-@app.callback(  Output('disp-choices', 'children'),
+###### Callback to assemble all models ######
+@app.callback(  Output('disp-choices', 'children'),   
                 Input('scalers-radio', 'value'),
                 Input('decomp-radio', 'value'),
                 Input('classif-radio', 'value'),
@@ -141,13 +158,15 @@ def Train():
             )
 def display_choices(scaler_value, decomposer_value, classifier_value, n):
     from sklearn import preprocessing
-    scalers = { 'stdScaler': preprocessing.StandardScaler(),
+    scalers = { 'None': preprocessing.FunctionTransformer(),
+                'stdScaler': preprocessing.StandardScaler(),
                 'MinMaxScaler': preprocessing.MinMaxScaler(),
                 'MaxAbsScaler': preprocessing.MaxAbsScaler()}
 
     from sklearn import decomposition
     
-    decomposers = { 'linearPCA': decomposition.KernelPCA(kernel='linear', n_components = n),
+    decomposers = { 'None': preprocessing.FunctionTransformer(),
+                    'linearPCA': decomposition.KernelPCA(kernel='linear', n_components = n),
                     'polyPCA': decomposition.KernelPCA(kernel='poly', n_components = n),
                     'rbfPCA': decomposition.KernelPCA(kernel='rbf', n_components = n),
                     'sigmoidPCA': decomposition.KernelPCA(kernel='sigmoid', n_components = n),
@@ -155,7 +174,8 @@ def display_choices(scaler_value, decomposer_value, classifier_value, n):
 
     from sklearn.neighbors import KNeighborsClassifier
     from sklearn.svm import SVC
-    estimators = {  'kNN': KNeighborsClassifier(n_neighbors = 5),
+    estimators = {  'None': preprocessing.FunctionTransformer(),
+                    'kNN': KNeighborsClassifier(n_neighbors = 5),
                     'SVC': SVC()}
 
     # model = pipe.fit(X_values, y_labels)
@@ -178,32 +198,44 @@ def display_choices(scaler_value, decomposer_value, classifier_value, n):
     ]
     )
 
-@app.callback(  Output('disp-dataset', 'children'),
+
+
+###### Callback to plot PCA using defined pipe ######
+@app.callback(  Output('disp-dataset', 'children'),             
                 Input('dataset-training-select', 'value'),
                 Input('scalers-radio', 'value'),
                 Input('decomp-radio', 'value'),
-            )
-def display_dataset(dataset_value, scaler_value, decomposer_value):
+                Input('task-radio', 'value'),
+                Input('mol-select', 'value'),
+)
+def display_dataset(dataset_value, scaler_value, decomposer_value, task_value, mol):
+    from sklearn import preprocessing
+    scalers = { 'None': preprocessing.FunctionTransformer(),
+                'stdScaler': preprocessing.StandardScaler(),
+                'MinMaxScaler': preprocessing.MinMaxScaler(),
+                'MaxAbsScaler': preprocessing.MaxAbsScaler()}
+
+    from sklearn import decomposition
+    n=3     ### Hard defined for 3D PCA plot
+    decomposers = { 'None': preprocessing.FunctionTransformer(),
+                    'linearPCA': decomposition.KernelPCA(kernel='linear', n_components = n),
+                    'polyPCA': decomposition.KernelPCA(kernel='poly', n_components = n),
+                    'rbfPCA': decomposition.KernelPCA(kernel='rbf', n_components = n),
+                    'sigmoidPCA': decomposition.KernelPCA(kernel='sigmoid', n_components = n),
+                    'cosinePCA': decomposition.KernelPCA(kernel='cosine', n_components = n)}
+
+    ### Above dicts of pipe modifiers
+    
     test_DS = dbi.select_dataset(dataset_value)
-    df = test_DS.loc['Fentanyl : Heroin']
+    if task_value == 'Molecule':
+        df = test_DS
+    else: 
+        df = test_DS.loc[mol]
+        
+    X = df.dropna(axis='columns')   # FIXME: Resolve issue of different raman shifts
     
-    # pipe = Pipeline([('scaler', preprocessing.MinMaxScaler()), ('pca', decomposition.KernelPCA(kernel='cosine', n_components = 3)), ('est', SVC())])
-    # pipe.fit(X_train, y_train)        # keep for actual ML
-    
-    # return dcc.Graph(
-    #             id='pca-plot',
-    #             figure=px.line(x=test_DS.columns.values, y=list(test_DS.values[0]))
-    #         ) 
-
-    df = df.dropna(axis='columns')   # FIXME: Resolve issue of different raman shifts
-
-    X = df.iloc[:, 1:len(df.columns)]
-    
-    pca_pipe = Pipeline([('scaler', preprocessing.MinMaxScaler()), ('pca', decomposition.KernelPCA(kernel='cosine', n_components = 3))])
+    pca_pipe = Pipeline([('scaler', scalers[scaler_value]), ('pca', decomposers[decomposer_value])])
     pca_components = pca_pipe.fit_transform(X)
-    
-    # testpca = PCA(n_components = 3).fit(X)
-    # exp_var_cumul = np.cumsum(testpca.explained_variance_ratio_)
     
     return (
         html.Label("PCA plot using " + str(pca_pipe)),
@@ -216,18 +248,12 @@ def display_dataset(dataset_value, scaler_value, decomposer_value):
             ),
             style={'height': '700px'}
         ),
-        
-        # dcc.Graph(
-        #     id='var-plot',
-        #     figure = px.area(
-        #         x=range(1, exp_var_cumul.shape[0] + 1),
-        #         y=exp_var_cumul,
-        #         labels={"x": "# Components", "y": "Explained Variance"}
-        #     ),
-        # ),
     )
-    
-@app.callback(
+
+
+
+###### Callback to collapse advanced settings panel ######
+@app.callback(                          
     Output("pipe-collapse", "is_open"),
     [Input("pipe-collapse-button", "n_clicks")],
     [State("pipe-collapse", "is_open")],
@@ -236,3 +262,38 @@ def toggle_pipe_collapse(n, is_open):
     if n:
         return not is_open
     return is_open
+
+
+
+###### Callback to uncollapse molecule selector when doing concentration task ######
+@app.callback(                          
+    Output("mol-collapse", "is_open"),
+    [Input("task-radio", "value")],
+    [State("mol-collapse", "is_open")],
+)
+def toggle_mol_collapse(task, is_open):
+    if task == 'Concentration':
+        return 1
+    return 0
+
+
+
+###### Callback to populate molecule selection dropdown ######
+@app.callback(Output('mol-select', 'options'),      
+              Input('dataset-training-select', 'value'),
+              Input('mol-select', 'value')
+)
+def update_molecule_input(dataset_value, molecule_value):
+    # enabled_style = {'display': 'block'}
+    # disabled_style = {'display': 'none'}
+    options = []
+
+    if dataset_value != None:
+        dataset = dbi.select_dataset(dataset_value)
+
+        molecules = dataset.index.get_level_values('Molecule').unique().to_numpy()              # list unique molecule labels within dataset
+        options = [{'label': name, 'value': name} for name in molecules]
+        
+        return options#, enabled_style, disabled_style
+    else:
+        return options#, disabled_style, disabled_style
