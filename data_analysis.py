@@ -26,8 +26,7 @@ def resample_data(df, new_x = np.linspace(200, 1800, 800)):
 def append_to_dataset(dataset, df, molecule, concentration, resample=False):
     df = df.transpose()      
     df.columns = df.iloc[0]                 # use raman shift row as column index
-    print('HERE')
-    print(df.values)
+
     df.drop('Raman Shift', inplace=True)    # FIXME: why is it now indexed by 'Raman' rather than 'Raman Shift'
     
     if resample and not dataset.empty:      # only allow resample if dataset has pre-existing raman shift values
