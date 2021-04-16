@@ -7,10 +7,13 @@ __all__ = [
     'list_datasets',
     'select_dataset',
     'store_dataset',
+    'list_models',
+    'select_model',
+    'store_model',
 ]
 
-def create_connection():
-    db_name = 'datasets.db'                     # FIXME: Fixed name, stored within cwd
+def create_connection(db_name):
+    # db_name = 'datasets.db'                     # FIXME: Fixed name, stored within cwd
     connection = None
     try:
         connection = sqlite3.connect(db_name)
@@ -19,8 +22,11 @@ def create_connection():
         print(f"The error '{e}' occurred")
     return connection
 
+
+
+###### Working w/ datasets.db
 def list_datasets():
-    conn = create_connection()
+    conn = create_connection('datasets.db')     # using db_name of 'datasets.db' since working with datasets
     c = conn.execute("SELECT name FROM sqlite_master WHERE type='table';")
     tables = [
         v[0] for v in c.fetchall()
@@ -31,7 +37,7 @@ def list_datasets():
     return tables
 
 def select_dataset(name):
-    conn = create_connection()
+    conn = create_connection('datasets.db')     # using db_name of 'datasets.db' since working with datasets
     if name in list_datasets():
         dataset = pd.read_sql('SELECT * from {}'.format(name), conn)    # FIXME: security risk, cannot figure out how to use safer methods to fill in variable
         # restore midx
@@ -46,53 +52,44 @@ def select_dataset(name):
     return dataset
 
 def store_dataset(dataset, name):
-    conn = create_connection()
+    conn = create_connection('datasets.db')     # using db_name of 'datasets.db' since working with datasets
+    dataset.to_sql(name, conn, if_exists='replace', index=True, index_label=dataset.index.names)
+    conn.close()
+    
+    
+    
+###### Working w/ models.db
+def list_models():
+    conn = create_connection('models.db')     # using db_name of 'models.db' since working with models
+    c = conn.execute("SELECT name FROM sqlite_master WHERE type='table';")
+    tables = [
+        v[0] for v in c.fetchall()
+        if v[0] != "sqlite_sequence"
+    ]
+    c.close()
+    conn.close()
+    return tables
+
+def select_model(name):
+    conn = create_connection('models.db')     # using db_name of 'models.db' since working with models
+    if name in list_datasets():
+        dataset = pd.read_sql('SELECT * from {}'.format(name), conn)    # FIXME: security risk, cannot figure out how to use safer methods to fill in variable
+        # # restore midx
+        # midx = pd.MultiIndex.from_arrays([dataset['Molecule'], dataset['Concentration'], dataset['Sample']], names=('Molecule', 'Concentration', 'Sample'))  
+        # dataset = dataset.set_index(midx)
+        # dataset.drop(midx.names, axis=1, inplace=True)
+        # # restore float type of column name
+        # dataset.columns = [float(val) for val in dataset.columns]
+    else:
+        dataset = pd.DataFrame()                            # FIXME: is this an acceptable method to generate new dataset
+    conn.close()
+    return dataset
+
+def store_model(dataset, name):
+    conn = create_connection('models.db')     # using db_name of 'models.db' since working with models
     dataset.to_sql(name, conn, if_exists='replace', index=True, index_label=dataset.index.names)
     conn.close()
 
 
-# NOTE: random steps to force a functional dataset into database for testing
-# import numpy as np
-
-# name = 'Ocean_Insights'
-# dataset = select_dataset(name)
-# molecule = 'BPE'
-# concentration = '1E-4'
-
-# df = pd.read_csv('~/Desktop/spring_2021/ee_494/sers_data/AllSpectraData_2021-02-23_10-23-29-BPE_1E-4_with-baseline.txt')
-# df = df.transpose()                     
-# df.columns = df.iloc[0]                 # use raman shift row as column index
-# df.drop('Raman Shift', inplace=True)    # raman shift row is unecessary 
-
-
-# if concentration in dataset.index.get_level_values(0).unique():                                 # check if concentration is already included in dataset
-#     n0 = int(dataset.loc[concentration].index[-1].replace('{} SP_'.format(molecule), '')) + 1   # find last value SP_n to start indexing sample at SP_n0 = n+1
-# else:
-#     n0 = 0                                                                                      # otherwise, sample_idx starts at SP_0
-
-# sample_idx = ['SP_{}'.format(n) for n in np.linspace(n0, n0+len(df.index), len(df.index), endpoint=False, dtype=int)]  # construct array of sample indicies
-# molecule_idx = [molecule]*len(sample_idx)
-# concentration_idx = [concentration]*len(sample_idx)                                             # construct array of concentration indices
-# midx = pd.MultiIndex.from_arrays([molecule_idx, concentration_idx, sample_idx], names=('Molecule', 'Concentration', 'Sample'))      # combine concentration & sample in multi index
-# df = df.set_index(midx)                 # assign multi index to df
-
-# dataset = pd.concat([dataset, df])
-# store_dataset(dataset, name)
-
-# if concentration in dataset.index.get_level_values(0).unique():                                 # check if concentration is already included in dataset
-#     n0 = int(dataset.loc[concentration].index[-1].replace('{} SP_'.format(molecule), '')) + 1   # find last value SP_n to start indexing sample at SP_n0 = n+1
-# else:
-#     n0 = 0                                                                                      # otherwise, sample_idx starts at SP_0
-
-# sample_idx = ['SP_{}'.format(n) for n in np.linspace(n0, n0+len(df.index), len(df.index), endpoint=False, dtype=int)]  # construct array of sample indicies
-# molecule_idx = [molecule]*len(sample_idx)
-# concentration_idx = [concentration]*len(sample_idx)                                             # construct array of concentration indices
-# midx = pd.MultiIndex.from_arrays([molecule_idx, concentration_idx, sample_idx], names=('Molecule', 'Concentration', 'Sample'))      # combine concentration & sample in multi index
-# df = df.set_index(midx)                 # assign multi index to df
-
-# dataset = pd.concat([dataset, df])
-# store_dataset(dataset, name)
-
-# name = 'Ocean_Insights'
-# dataset = select_dataset(name)
-# print(list(dataset.values))
+# dataset = select_dataset('TEST')
+# print(dataset.index)

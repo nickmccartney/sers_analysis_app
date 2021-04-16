@@ -1,5 +1,5 @@
-# Ignore pychache
-__pychache__/
+# Ignore pycache
+__pycache__/
 
 # Ignore any SQL databases for now
 # .db

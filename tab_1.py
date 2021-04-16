@@ -1,9 +1,10 @@
 import dash
 import dash_html_components as html
 import dash_core_components as dcc
+import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output, State
 
-import plotly.express as px
+import plotly.graph_objects as go
 import pandas as pd
 import base64
 import io
@@ -18,100 +19,124 @@ def render_tab():
     dataset_options.append({'label': 'Create New (enter name below...)', 'value': 'NEW'})
 
     return html.Div([
-        html.Label("Dataset"),
-        dcc.Dropdown(
-            id='select-dataset',
-            options=dataset_options,
-            placeholder='Select a Dataset...'
-        ),
-        html.Div([
-            dcc.Input(
-                id='new-dataset',
-                type='text',
-                placeholder='Enter a dataset name...',
-            )
-        ],
-            id='new-dataset-container',
-            style={'display': 'none'}
-        ),
+        dbc.Row([
+            dbc.Col([
+                html.Label("Dataset"),
+                dcc.Dropdown(
+                    id='select-dataset',
+                    options=dataset_options,
+                    placeholder='Select a Dataset...'
+                ),
+                html.Div([
+                    dcc.Input(
+                        id='new-dataset',
+                        type='text',
+                        placeholder='Enter a dataset name...',
+                    )
+                ],
+                    id='new-dataset-container',
+                    style={'display': 'none'}
+                ),
 
-        html.Br(),
+                html.Br(),
 
-        # html.Label("Molecule"),
-        html.Div([
-            # html.Label("Molecule"),
-            dcc.Dropdown(
-                id='select-molecule',
-                placeholder='Select a Molecule...'
-            )
-        ],
-            id='select-molecule-container',
-            style={'display': 'none'}
-        ),
+                html.Div([
+                    dcc.Dropdown(
+                        id='select-molecule',
+                        placeholder='Select a Molecule...'
+                    )
+                ],
+                    id='select-molecule-container',
+                    style={'display': 'none'}
+                ),
 
-        html.Div([
-            dcc.Input(
-                id='new-molecule', 
-                type='text', 
-                placeholder='Enter a molecule...'
-            )
-        ],
-            id='new-molecule-container',
-            style={'display': 'none'}
-        ),
+                html.Div([
+                    dcc.Input(
+                        id='new-molecule', 
+                        type='text', 
+                        placeholder='Enter a molecule...'
+                    )
+                ],
+                    id='new-molecule-container',
+                    style={'display': 'none'}
+                ),
 
-        html.Br(),
+                html.Br(),
 
-        html.Div([
-            dcc.Dropdown(
-                id='select-concentration',
-                placeholder='Select a Concentration...'
-        )
-        ],
-            id='select-concentration-container',
-            style={'display': 'none'}
-        ),
+                html.Div([
+                    dcc.Dropdown(
+                        id='select-concentration',
+                        placeholder='Select a Concentration...'
+                )
+                ],
+                    id='select-concentration-container',
+                    style={'display': 'none'}
+                ),
 
-        html.Div(
-            dcc.Input(
-                id='new-concentration', 
-                type='text', 
-                placeholder='Enter a concentration...'
+                html.Div(
+                    dcc.Input(
+                        id='new-concentration', 
+                        type='text', 
+                        placeholder='Enter a concentration...'
+                    ),
+                    id='new-concentration-container',
+                    style={'display': 'none'}
+                ),
+
+                dcc.Upload(
+                    id='upload-data',
+                    children=html.Div([
+                        'Drag and Drop or ',
+                        html.A('Select Files')
+                    ]),
+                    style={
+                        'height': '60px',
+                        'lineHeight': '60px',
+                        'borderWidth': '1px',
+                        'borderStyle': 'dashed',
+                        'borderRadius': '5px',
+                        'textAlign': 'center',
+                        'margin': '10px'
+                    },
+                    multiple=False # Allow multiple files to be uploaded
+                ),
+
+                html.Div(id='import-data', style={'display':'none'}),       # hidden div for imported file converted to df
+
+                dcc.Checklist(
+                    id='remove-unselected',
+                    options=[
+                        {'label': 'Remove Unselected Spectra', 'value': 'remove'}
+                    ],
+                    value=[]
+                ),
+
+                html.Button(
+                    'Import',
+                    id='submit-import',
+                    n_clicks=0
+                ),
+
+                html.H5(id='intermediate-value')
+            ],
+                style={
+                    'background-color': 'lightgrey',
+                    'padding': '25px'
+                },
+                width=3
             ),
-            id='new-concentration-container',
-            style={'display': 'none'}
-        ),
 
-        dcc.Upload(
-            id='upload-data',
-            children=html.Div([
-                'Drag and Drop or ',
-                html.A('Select Files')
-            ]),
-            style={
-                'height': '60px',
-                'lineHeight': '60px',
-                'borderWidth': '1px',
-                'borderStyle': 'dashed',
-                'borderRadius': '5px',
-                'textAlign': 'center',
-                'margin': '10px'
-            },
-            multiple=False # Allow multiple files to be uploaded
-        ),
+            dbc.Col([
+                html.Div(
+                    dcc.Graph(
+                        id='import-spectra'
+                    ),
+                    id='import-spectra-container'
+                ),
 
-        
-        html.Div(id='import-spectra-container'),
-
-        html.Button(
-            'Import',
-            id='submit-import',
-            n_clicks=0
-        ),
-
-        html.H1(id='intermediate-value')
-
-        
+                html.Div(id='unselected-data', style={'display':'none'})   # hidden div for tracking spectra to remove
+            ])
+        ])
     ])
 
 @app.callback(Output('new-dataset-container', 'style'),
@@ -166,7 +191,6 @@ def update_concentration_input(dataset_value, molecule_value, concentration_valu
     disabled_style = {'display': 'none'}
     options = []
 
-
     if dataset_value == 'NEW':
         return options, disabled_style, enabled_style
     elif dataset_value != None and molecule_value != None:
@@ -212,28 +236,53 @@ def parse_data(contents, filename):
 
     return df
 
-
-@app.callback(Output('import-spectra-container', 'children'),
-              [
-                  Input('upload-data', 'contents'),
-                  Input('upload-data', 'filename')
-              ])
-def update_graph(contents, filename):
-    if contents:
+@app.callback(Output('import-data', 'children'),
+              Output('unselected-data', 'children'),
+              Input('upload-data', 'contents'),
+              Input('upload-data', 'filename'),
+              Input('import-spectra', 'restyleData'),
+              State('import-data', 'children'),
+              State('unselected-data', 'children'))
+def update_import_data(contents, filename, style_data, import_data, unselected_data):
+    changed_id = [p['prop_id'] for p in dash.callback_context.triggered][0]
+    if 'upload-data' in changed_id:
         contents = contents
         filename = filename
         df = parse_data(contents, filename)
-        df = df.T
-        x_axis = df.iloc[0]
-        df.drop('Raman Shift', inplace=True)
-        df = df.T
+        unselected_data = []
+        return df.to_json(), unselected_data
+    
+    elif 'import-spectra' in changed_id:
+        event_states = style_data[0]['visible']
+        event_idxs = style_data[1]
+        for idx,state in zip(event_idxs, event_states):
+            if state != True and idx not in unselected_data:
+                unselected_data.append(idx)
+            elif idx in unselected_data:
+                while idx in unselected_data: unselected_data.remove(idx)
+        return dash.no_update, unselected_data
+    else:
+        return dash.no_update, dash.no_update
+    
 
-        return [
-            dcc.Graph(
-                id='import-spectra',
-                figure=px.line(df)
-            )
-        ]
+@app.callback(Output('import-spectra', 'figure'),
+              Input('import-data', 'children'))
+def update_graph(import_data):
+    if import_data:
+        df = pd.read_json(import_data)
+        x_axis = df['Raman Shift']
+        df.drop('Raman Shift',axis=1, inplace=True)
+
+        fig = go.Figure()
+        fig.update_layout(title_text='Import Data Spectra')
+        fig.update_xaxes(title_text='Raman Shift cm^-1')
+        fig.update_yaxes(title_text='Relative Intensity')
+
+        for signal in df.columns:
+            y_axis = df[signal]
+            fig.add_trace(go.Scatter(x=x_axis, y=y_axis, name=signal))
+        
+        return fig
 
 @app.callback(Output('intermediate-value', 'children'),
               Input('submit-import', 'n_clicks'),
@@ -243,9 +292,10 @@ def update_graph(contents, filename):
               State('new-molecule', 'value'),
               State('select-concentration', 'value'),
               State('new-concentration', 'value'),
-              State('upload-data', 'contents'),
-              State('upload-data', 'filename'))
-def import_data(n_clicks, select_dataset, new_dataset, select_molecule, new_molecule, select_concentration, new_concentration, contents, filename):
+              State('import-data', 'children'),
+              State('unselected-data', 'children'),
+              State('remove-unselected', 'value'))
+def import_data(n_clicks, select_dataset, new_dataset, select_molecule, new_molecule, select_concentration, new_concentration, import_data, unselected_data, remove_unselected):
 
     df = pd.DataFrame()
     dataset_label = None
@@ -271,16 +321,15 @@ def import_data(n_clicks, select_dataset, new_dataset, select_molecule, new_mole
 
     dataset = dbi.select_dataset(dataset_label)         # should get either exisiting or empty dataframe
 
-    if contents:
-        contents = contents
-        filename = filename
-        df = parse_data(contents, filename)
-    print(dataset_label, molecule_label, concentration_label, df.empty)
+    if import_data:
+        df = pd.read_json(import_data)
+        if remove_unselected:
+            unselected_data = [val+1 for val in unselected_data]
+            df = df.drop(df.columns[unselected_data], axis=1)
+
     if dataset_label!=None and molecule_label!=None and concentration_label!=None and not df.empty:
         dataset = da.append_to_dataset(dataset, df, molecule_label, concentration_label)
         dbi.store_dataset(dataset, dataset_label)
-        ret = 'Successful'
+        return 'Successful'
     else:
-        ret = 'No Import Yet'
-
-    return ret
+        return 'No Import Yet'
