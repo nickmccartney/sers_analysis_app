@@ -4,6 +4,7 @@ import dash_bootstrap_components as dbc
 import plotly.express as px
 import dash
 from dash.dependencies import Input, Output, State
+import dash_table
 
 from app import app
 from app import server
@@ -21,6 +22,7 @@ from sklearn.pipeline import Pipeline
 from sklearn import preprocessing
 from sklearn import decomposition
 from sklearn.svm import SVC
+import pickle
 
 
 def render_tab():
@@ -139,6 +141,11 @@ def render_tab():
                 ]
             ),
             dbc.Row(dbc.Col(html.Div(id='disp-choices'))),
+            dbc.Row(html.Div(id='disp-pipeline-table')),
+            dbc.Row(dbc.Button('Train Models',
+                                id='train-button',)),
+            dbc.Row(html.Div(id='editing-prune-data-output')),
+            dbc.Row(html.Div(id='disp-train-success')),
         ],
         
         style={
@@ -146,55 +153,6 @@ def render_tab():
             'padding': '30px'
         }
     ),
-    
-###### Callback to assemble all models ######
-@app.callback(  Output('disp-choices', 'children'),   
-                Input('scalers-radio', 'value'),
-                Input('decomp-radio', 'value'),
-                Input('classif-radio', 'value'),
-                Input('PCA_n', 'value')
-            )
-def display_choices(scaler_value, decomposer_value, classifier_value, n):
-    from sklearn import preprocessing
-    scalers = { 'None': preprocessing.FunctionTransformer(),
-                'stdScaler': preprocessing.StandardScaler(),
-                'MinMaxScaler': preprocessing.MinMaxScaler(),
-                'MaxAbsScaler': preprocessing.MaxAbsScaler()}
-
-    from sklearn import decomposition
-    
-    decomposers = { 'None': preprocessing.FunctionTransformer(),
-                    'linearPCA': decomposition.KernelPCA(kernel='linear', n_components = n),
-                    'polyPCA': decomposition.KernelPCA(kernel='poly', n_components = n),
-                    'rbfPCA': decomposition.KernelPCA(kernel='rbf', n_components = n),
-                    'sigmoidPCA': decomposition.KernelPCA(kernel='sigmoid', n_components = n),
-                    'cosinePCA': decomposition.KernelPCA(kernel='cosine', n_components = n)}
-
-    from sklearn.neighbors import KNeighborsClassifier
-    from sklearn.svm import SVC
-    estimators = {  'None': preprocessing.FunctionTransformer(),
-                    'kNN': KNeighborsClassifier(n_neighbors = 5),
-                    'SVC': SVC()}
-
-    # model = pipe.fit(X_values, y_labels)
-    # pickle.dump(model, open('model.sav', 'wb'))
-    # [str(scalers[i]) for i in scaler_value]
-    pipes = []
-
-    for i in scaler_value:
-        for j in decomposer_value:
-            for k in classifier_value:
-                
-                pipe = sklearn.pipeline.Pipeline([('scaler', scalers[i]), ('pca', decomposers[j]), ('est', estimators[k])])
-                pipes = [*pipes, pipe]
-    # pickle.dump(pipe, open('model.sav', 'wb'))
-    return html.Div([
-        html.Div("You are using: " + ','.join([str(p) for p in pipes])),
-        dbc.Button(
-            "Confirm"
-        )
-    ]
-    )
 
 
 
@@ -234,6 +192,7 @@ def display_dataset(dataset_value, scaler_value, decomposer_value, task_value, m
     
     pca_pipe = Pipeline([('scaler', scalers[scaler_value]), ('pca', decomposers[decomposer_value])])
     pca_components = pca_pipe.fit_transform(X)
+    pca_fit = pca_pipe.fit(X)
     
     return (
         html.Label("PCA plot using " + str(pca_pipe)),
@@ -295,3 +254,118 @@ def update_molecule_input(dataset_value, molecule_value):
         return options#, enabled_style, disabled_style
     else:
         return options#, disabled_style, disabled_style
+
+
+    
+###### Callback to update datatable ######
+@app.callback(  Output('disp-pipeline-table', 'children'),             
+                Input('dataset-training-select', 'value'),
+)
+def disp_table(dataset_value):
+    dataset = dbi.select_dataset(dataset_value)
+
+    model_frame = pd.DataFrame( data = [['Molecule', 'All', 'MinMaxScaler', 'cosinePCA', 'SVC']], 
+                                columns=['Classification Task', 'Molecule', 'Scaler', 'Decomposer', 'Estimator']) ### Assembles dataframe for models
+    for i in dataset.index.unique(0).values:
+        model_frame = model_frame.append({  'Classification Task': 'Concentration', 
+                                            'Molecule': i, 
+                                            'Scaler': 'MinMaxScaler',
+                                            'Decomposer': 'cosinePCA',
+                                            'Estimator': 'SVC'}, ignore_index = True)    # Appends new row to array
+        
+    return (
+        dash_table.DataTable(
+            columns=[
+                {'id': 'Classification Task', 'name': 'Task', 'editable': False},
+                {'id': 'Molecule', 'name': 'Molecule', 'editable': False},
+                {'id': 'Scaler', 'name': 'Scaler', 'presentation': 'dropdown'},
+                {'id': 'Decomposer', 'name': 'Decomposer', 'presentation': 'dropdown'},
+                {'id': 'Estimator', 'name': 'Estimator', 'presentation': 'dropdown'},
+            ],
+            id='pipeline-table',
+            data=model_frame.to_dict('records'),
+            editable=True,
+            dropdown={
+                'Scaler': {
+                    'options': [
+                        {'label': 'None', 'value': 'None'},
+                        {'label': 'Standard', 'value': 'stdScaler'},
+                        {'label': 'Min-Max', 'value': 'MinMaxScaler'},
+                        {'label': 'Max Absolute Value', 'value': 'MaxAbsScaler'}
+                    ]
+                },
+                'Decomposer': {
+                    'options': [
+                        {'label': 'None', 'value': 'None'},
+                        {'label': 'Linear PCA', 'value': 'linearPCA'},
+                        {'label': 'Polynomial PCA', 'value': 'polyPCA'},
+                        {'label': 'Sigmoid PCA', 'value': 'sigmoidPCA'},
+                        {'label': 'Cosine PCA', 'value': 'cosinePCA'}
+                    ]
+                },
+                'Estimator': {
+                    'options': [
+                        {'label': 'None', 'value': 'None'},
+                        {'label': 'k-Nearest Neighbors', 'value': 'kNN'},
+                        {'label': 'Support Vector Classifier', 'value': 'SVC'}
+                    ]
+                },
+            },
+            css=[{"selector": ".Select-menu-outer", "rule": "display: block !important"}],
+        )
+    )
+
+
+
+###### Callback to construct & store models to database ######
+@app.callback(  Output('disp-train-success', 'children'),
+                Input('train-button', 'n_clicks'),             
+                State('dataset-training-select', 'value'),
+                State('pipeline-table', 'data'),
+)
+def assemble_models(clicked, dataset_value, table_data):
+    dataset = dbi.select_dataset(dataset_value)
+    dataset = dataset.dropna(axis='columns')                          # Remove null values
+    
+    df = pd.DataFrame.from_dict(table_data)
+    
+    arr=[]
+    model_frame = df.drop(columns=['Scaler', 'Decomposer', 'Estimator'])
+    for i in df.index.values:
+        if df.iloc[i]['Classification Task'] != 'Molecule':
+            data = dataset.loc[df.iloc[i]['Molecule']]      # Gets dataframe for conc. task
+        else:
+            data = dataset
+        
+        model = da.serialize_model(data, df.iloc[i]['Scaler'], df.iloc[i]['Decomposer'], df.iloc[i]['Estimator'])
+
+        arr = [*arr, model]
+    model_frame['Pipeline'] = arr
+    
+    dbi.store_model(model_frame, dataset_value)
+    return "Saved " + dataset_value
+    # return dash_table.DataTable(
+    #     id='some-table',
+    #     columns=[{"name": str(i), "id": str(i)} for i in model_frame.columns],
+    #     data=model_frame.to_dict('records'),
+    # )
+
+
+# import pprint
+# @app.callback(Output('editing-prune-data-output', 'children'),    ### Prints raw data
+#               Input('pipeline-table', 'data'))
+# def display_output(rows):
+#     pruned_rows = []
+#     for row in rows:
+#         # require that all elements in a row are specified
+#         # the pruning behavior that you need may be different than this
+#         if all([cell != '' for cell in row.values()]):
+#             pruned_rows.append(row)
+
+#     return html.Div([
+#         html.Div('Raw Data'),
+#         html.Pre(pprint.pformat(rows)),
+#         html.Hr(),
+#         html.Div('Pruned Data'),
+#         html.Pre(pprint.pformat(pruned_rows)),
+#     ])
