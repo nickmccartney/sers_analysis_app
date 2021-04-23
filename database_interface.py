@@ -73,15 +73,9 @@ def list_models():
 def select_model(name):
     conn = create_connection('models.db')     # using db_name of 'models.db' since working with models
     if name in list_datasets():
-        dataset = pd.read_sql('SELECT * from {}'.format(name), conn)    # FIXME: security risk, cannot figure out how to use safer methods to fill in variable
-        # # restore midx
-        # midx = pd.MultiIndex.from_arrays([dataset['Molecule'], dataset['Concentration'], dataset['Sample']], names=('Molecule', 'Concentration', 'Sample'))  
-        # dataset = dataset.set_index(midx)
-        # dataset.drop(midx.names, axis=1, inplace=True)
-        # # restore float type of column name
-        # dataset.columns = [float(val) for val in dataset.columns]
+        dataset = pd.read_sql('SELECT * from {}'.format(name), conn)    
     else:
-        dataset = pd.DataFrame()                            # FIXME: is this an acceptable method to generate new dataset
+        dataset = pd.DataFrame()                            
     conn.close()
     return dataset
 

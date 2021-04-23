@@ -1,5 +1,8 @@
 # Ignore pycache
 __pycache__/
 
+# Ignore notebooks
+*.ipynb
+
 # Ignore any SQL databases for now
 # .db
