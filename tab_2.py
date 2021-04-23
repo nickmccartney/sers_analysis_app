@@ -5,6 +5,7 @@ import plotly.express as px
 import dash
 from dash.dependencies import Input, Output, State
 import dash_table
+from dash.exceptions import PreventUpdate
 
 from app import app
 from app import server
@@ -141,6 +142,7 @@ def render_tab():
                 ]
             ),
             dbc.Row(dbc.Col(html.Div(id='disp-choices'))),
+            dbc.Row(html.H2('Models')),
             dbc.Row(html.Div(id='disp-pipeline-table')),
             dbc.Row(dbc.Button('Train Models',
                                 id='train-button',)),
@@ -159,12 +161,27 @@ def render_tab():
 ###### Callback to plot PCA using defined pipe ######
 @app.callback(  Output('disp-dataset', 'children'),             
                 Input('dataset-training-select', 'value'),
-                Input('scalers-radio', 'value'),
-                Input('decomp-radio', 'value'),
-                Input('task-radio', 'value'),
-                Input('mol-select', 'value'),
+                Input('pipeline-table', 'data'),
+                Input('pipeline-table', 'selected_rows'),
+                
+                # Input('scalers-radio', 'value'),
+                # Input('decomp-radio', 'value'),
+                # Input('task-radio', 'value'),
+                # Input('mol-select', 'value'),
 )
-def display_dataset(dataset_value, scaler_value, decomposer_value, task_value, mol):
+def display_dataset(dataset_value, pipe_df, row):
+    if not dataset_value:
+        raise PreventUpdate
+    
+    # scaler_value, decomposer_value, task_value, mol
+    row = row[0]
+    
+    scaler_value = pipe_df[row]['Scaler']
+    decomposer_value = pipe_df[row]['Decomposer']
+    task_value = pipe_df[row]['Classification Task']
+    mol = pipe_df[row]['Molecule']
+    
+    ### 
     from sklearn import preprocessing
     scalers = { 'None': preprocessing.FunctionTransformer(),
                 'stdScaler': preprocessing.StandardScaler(),
@@ -192,7 +209,7 @@ def display_dataset(dataset_value, scaler_value, decomposer_value, task_value, m
     
     pca_pipe = Pipeline([('scaler', scalers[scaler_value]), ('pca', decomposers[decomposer_value])])
     pca_components = pca_pipe.fit_transform(X)
-    pca_fit = pca_pipe.fit(X)
+    # pca_fit = pca_pipe.fit(X)
     
     return (
         html.Label("PCA plot using " + str(pca_pipe)),
@@ -257,11 +274,14 @@ def update_molecule_input(dataset_value, molecule_value):
 
 
     
-###### Callback to update datatable ######
+###### Callback to update datatable with listed pipelines ######
 @app.callback(  Output('disp-pipeline-table', 'children'),             
                 Input('dataset-training-select', 'value'),
 )
 def disp_table(dataset_value):
+    if not dataset_value:
+        raise PreventUpdate
+    
     dataset = dbi.select_dataset(dataset_value)
 
     model_frame = pd.DataFrame( data = [['Molecule', 'All', 'MinMaxScaler', 'cosinePCA', 'SVC']], 
@@ -285,6 +305,7 @@ def disp_table(dataset_value):
             id='pipeline-table',
             data=model_frame.to_dict('records'),
             editable=True,
+            row_selectable='single',
             dropdown={
                 'Scaler': {
                     'options': [
@@ -317,13 +338,18 @@ def disp_table(dataset_value):
 
 
 
-###### Callback to construct & store models to database ######
+###### Callback to construct & store models to database on button click ######
 @app.callback(  Output('disp-train-success', 'children'),
                 Input('train-button', 'n_clicks'),             
                 State('dataset-training-select', 'value'),
                 State('pipeline-table', 'data'),
 )
 def assemble_models(clicked, dataset_value, table_data):
+    if not clicked:
+        return 'Please select a model'
+    if not dataset_value:
+        raise PreventUpdate
+       
     dataset = dbi.select_dataset(dataset_value)
     dataset = dataset.dropna(axis='columns')                          # Remove null values
     
