@@ -19,6 +19,8 @@ def render_tab():
     dataset_options.append({'label': 'Create New (enter name below...)', 'value': 'NEW'})
 
     return html.Div([
+        dcc.Location(id='url', refresh=True),           # FIXME: might be improper implementation of page refresh?
+
         dbc.Row([
             dbc.Col([
                 html.Label("Dataset"),
@@ -285,6 +287,7 @@ def update_graph(import_data):
         return fig
 
 @app.callback(Output('intermediate-value', 'children'),
+              Output('url', 'href'),
               Input('submit-import', 'n_clicks'),
               State('select-dataset', 'value'),
               State('new-dataset', 'value'),
@@ -330,6 +333,6 @@ def import_data(n_clicks, select_dataset, new_dataset, select_molecule, new_mole
     if dataset_label!=None and molecule_label!=None and concentration_label!=None and not df.empty:
         dataset = da.append_to_dataset(dataset, df, molecule_label, concentration_label)
         dbi.store_dataset(dataset, dataset_label)
-        return 'Successful'
+        return 'Successful', '/'
     else:
-        return 'No Import Yet'
+        return 'No Import Yet', dash.no_update

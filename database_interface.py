@@ -50,6 +50,23 @@ def store_dataset(dataset, name):
     dataset.to_sql(name, conn, if_exists='replace', index=True, index_label=dataset.index.names)
     conn.close()
 
+###
+# Simple Method for Data Export 
+###
 
-# dataset = select_dataset('TEST')
-# print(dataset.index)
+# import numpy as np
+# dataset = select_dataset('master_ocean_insights')
+# filtered_dataset = dataset
+# for column in dataset.columns:
+#     if dataset[column].isnull().values.any():
+#         filtered_dataset.drop([column], inplace=True, axis=1)
+# filtered_dataset
+# dataset = filtered_dataset.sort_index()
+# molecules = dataset.index.get_level_values('Molecule').to_numpy()
+# concentrations = dataset.index.get_level_values('Concentration').to_numpy()
+# groups = np.unique(np.array([[molecule, concentration] for molecule, concentration in zip(molecules, concentrations)]), axis=0)
+# with pd.ExcelWriter('collected_data.xlsx') as writer:
+#     for group in groups:
+#         data = dataset.loc[(group[0],group[1])]
+#         print(str(group[0]), str(group[1]))
+#         data.to_excel(writer, sheet_name='{}_{}'.format(str(group[0]).replace(':','_'), str(group[1]).replace(':','_')))
