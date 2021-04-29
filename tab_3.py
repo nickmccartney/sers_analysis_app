@@ -172,38 +172,18 @@ def output_table(dataset_value, contents, filename):
         mol_test = data.values
         mol_class = mol_model.predict(mol_test)
 
-
-
-
         X_class = pd.DataFrame()
         X_class['Trace'] = df.columns
         X_class['Molecule'] = mol_class
         X_class['Concentration'] = 'Concentration'
 
-
-
         # Concentration classification
-        trace_names = data.columns          # for output table
-
         for i in range(len(df.columns)):
             mol_idx = model_frame.index[model_frame['Molecule'] == mol_class[i]].tolist()   # molecule columns index in model_frame
             conc_model = pickle.loads(model_frame.iloc[mol_idx[0]]['Pipeline'])             # pipeline for specific molecule
             conc_test = data.values
             conc_class = conc_model.predict(conc_test)
             X_class['Concentration'][i] = conc_class[i]
-            # X_class = X_class.append({'Molecule': mol_class[i], 'Concentration': conc_class[i], 'Trace': trace_names[i]}, ignore_index=True)
-
-
-
-        ### Create datatable dataframe to return
-
-        # X_class = X_class.append({'Molecule': mol_class, 'Concentration': conc_class}, ignore_index=True)
-
-        # X_class['Molecule'] = mol_model.predict(mol_test)
-        # X_class['Concentration'] = 'Concentration'
-
-
-
 
 
         return(
