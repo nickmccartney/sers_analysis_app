@@ -5,37 +5,24 @@ import pickle
 from sklearn.pipeline import Pipeline
 
 __all__ = [
-    'resample_data',
     'append_to_dataset',
     'serialize_model',
 ]
 
-def resample_data(df, new_x = np.linspace(200, 1800, 800)):
-    ###                                                                        ###
-    #   returns df with each set of signal values interpolated over new_x points #
-    #       * df : data to be resampled                                          #
-    #       * new_x : optional specification of exact points to interpolate over #
-    ###                                                                        ###
+def append_to_dataset(dataset, df, molecule, concentration):
+    '''
+        properly format and then append new sample data to dataset
+         - {dataframe} dataset: dataset which new data is appended to
+         - {dataframe} df: dataframe containing new sample data
+         - {str} molecule: label for molecule type
+         - {str} concentration: label for concentration type
+    '''
 
-    old_x = df.columns    # gather values of raman shift sampled at
-    old_y = df.values     # gather original signal values 
-
-    new_y = [np.interp(new_x, old_x, signal) for signal in old_y]
-    new_df = pd.DataFrame(columns=new_x, data=new_y)
-    # df.columns = new_x    # modify sampling raman shift values to correspond to new_x values
-    # df.data = new_y       # modifiy data to represent interpolated new_y values
-    return new_df
-
-def append_to_dataset(dataset, df, molecule, concentration, resample=False):
     df = df.transpose()      
     df.columns = df.iloc[0]                 # use raman shift row as column index
 
-    df.drop('Raman Shift', inplace=True)    # FIXME: why is it now indexed by 'Raman' rather than 'Raman Shift'
+    df.drop('Raman Shift', inplace=True)    
     
-    if resample and not dataset.empty:      # only allow resample if dataset has pre-existing raman shift values
-        new_x = dataset.columns             # retrieve pre-existing raman shift values
-        df = resample_data(df, new_x)       # interpolate df values in order to match to previous dataset entries
-
     if concentration in dataset.index.get_level_values(0).unique():                                 # check if concentration is already included in dataset
         n0 = int(dataset.loc[concentration].index[-1].replace('{} SP_'.format(molecule), '')) + 1   # find last value SP_n to start indexing sample at SP_n0 = n+1
     else:
@@ -73,16 +60,16 @@ from sklearn.svm import SVC
 estimators = {  'None': preprocessing.FunctionTransformer(),
                 'kNN': KNeighborsClassifier(n_neighbors = 5),
                 'SVC': SVC()}
-###
 
 def serialize_model(df, scaler_value, decomposer_value, estimator_value):   # Serialize trained models
     '''
-    returns a fitted pipeline in a serialized format
-    {dataframe} df: Dataframe, first index level serves as labels for fitted model
-    {str} scaler_value: key for scalers dict
-    {str} decomposer_value: key for decomposer dict
-    {str} estimator_value: key for estimators dict 
+        returns a fitted pipeline in a serialized format
+        - {dataframe} df: Dataframe, first index level serves as labels for fitted model
+        - {str} scaler_value: key for scalers dict
+        - {str} decomposer_value: key for decomposer dict
+        - {str} estimator_value: key for estimators dict 
     '''
+
     pipe = Pipeline([('scaler', scalers[scaler_value]), ('pca', decomposers[decomposer_value]), ('estimator', estimators[estimator_value])])    # Assembles a pipeline
     fitted = pipe.fit(df.values, df.index.get_level_values(0))                                                  # fits model to concentration features of current mol.
     serialized = pickle.dumps(fitted)                                                                           # Serializes fitted model  

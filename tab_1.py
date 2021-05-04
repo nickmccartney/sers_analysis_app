@@ -100,7 +100,7 @@ def render_tab():
                         'textAlign': 'center',
                         'margin': '10px'
                     },
-                    multiple=False # Allow multiple files to be uploaded
+                    multiple=False
                 ),
 
                 html.Div(id='import-data', style={'display':'none'}),       # hidden div for imported file converted to df
@@ -119,7 +119,7 @@ def render_tab():
                     n_clicks=0
                 ),
 
-                html.H5(id='intermediate-value')
+                html.H5(id='intermediate-value')    # status of import success
             ],
                 style={
                     'background-color': 'lightgrey',
@@ -147,6 +147,7 @@ def update_dataset_input(value):
     enabled_style = {'display': 'block'}
     disabled_style = {'display': 'none'}
 
+    # check if defining new dataset, if so show textbox for entry
     if value == 'NEW':
         return enabled_style
     else:
@@ -163,21 +164,28 @@ def update_molecule_input(dataset_value, molecule_value):
     disabled_style = {'display': 'none'}
     options = []
 
+    # check if defining new dataset
     if dataset_value == 'NEW':
         return options, disabled_style, enabled_style
+    # otherwise check if dataset choice is selected
     elif dataset_value != None:
         dataset = dbi.select_dataset(dataset_value)
 
         molecules = dataset.index.get_level_values('Molecule').unique().to_numpy()              # list unique molecule labels within dataset
         options = [{'label': name, 'value': name} for name in molecules]
-        options.append({'label': 'Create New (enter name below...)', 'value': 'NEW'})  # allow choice to assign new molecule label
+        options.append({'label': 'Create New (enter name below...)', 'value': 'NEW'})           # allow choice to assign new molecule label
 
+        # if defining new molecule, serve textbox for entry 
         if molecule_value == 'NEW':
             return options, enabled_style, enabled_style
+        # if other molecule label selected, do not show textbox
         elif molecule_value != None:
             return options, enabled_style, disabled_style
+        # if no selection for molecule, do now show textbox yet
         else:
             return options, enabled_style, disabled_style
+
+    # if not, wait to display proper molecule and concentration options
     else:
         return options, disabled_style, disabled_style
       
@@ -193,11 +201,16 @@ def update_concentration_input(dataset_value, molecule_value, concentration_valu
     disabled_style = {'display': 'none'}
     options = []
 
+    # check if defining new dataset
     if dataset_value == 'NEW':
         return options, disabled_style, enabled_style
+
+    # otherwise check if selections for dataset and molecule labels 
     elif dataset_value != None and molecule_value != None:
+        # if new molecule, serve new concentration dialog
         if molecule_value == 'NEW':
             return options, disabled_style, enabled_style
+        # otherwise, serve dialog containing dropdown list of existing concentrations
         else:
             dataset = dbi.select_dataset(dataset_value)
 
@@ -205,12 +218,19 @@ def update_concentration_input(dataset_value, molecule_value, concentration_valu
             options = [{'label': name, 'value': name} for name in molecules]
             options.append({'label': 'Create New (enter name below...)', 'value': 'NEW'})  # allow choice to assign new molecule label
 
+            # if user selects to define new concentration, serve textbox
             if concentration_value == 'NEW':
                 return options, enabled_style, enabled_style
+
+            # if selection is some other value, don't serve textbox
             elif concentration_value != None:
                 return options, enabled_style, disabled_style
+
+            # otherwise, no selection and hide textbox for now
             else:
                 return options, enabled_style, disabled_style
+
+    # otherwise no molecule selected, wait to display proper concentration dialog
     else:
         return options, disabled_style, disabled_style
 
@@ -221,14 +241,14 @@ def parse_data(contents, filename):
     decoded = base64.b64decode(content_string)
     try:
         if 'csv' in filename:
-            # Assume that the user uploaded a CSV or TXT file
+            # assume that the user uploaded a CSV or TXT file
             df = pd.read_csv(
                 io.StringIO(decoded.decode('utf-8')))
         elif 'xls' in filename:
-            # Assume that the user uploaded an excel file
+            # assume that the user uploaded an excel file
             df = pd.read_excel(io.BytesIO(decoded))
         elif 'txt' or 'tsv' in filename:
-            # Assume that the user upl, delimiter = r'\s+'oaded an excel file
+            # assume that the user uploaded comma seperated TXT file
             df = pd.read_csv(io.StringIO(decoded.decode('utf-8')))
     except Exception as e:
         print(e)
@@ -247,6 +267,8 @@ def parse_data(contents, filename):
               State('unselected-data', 'children'))
 def update_import_data(contents, filename, style_data, import_data, unselected_data):
     changed_id = [p['prop_id'] for p in dash.callback_context.triggered][0]
+
+    # check if new file uploaded, if so store in hidden div
     if 'upload-data' in changed_id:
         contents = contents
         filename = filename
@@ -254,6 +276,7 @@ def update_import_data(contents, filename, style_data, import_data, unselected_d
         unselected_data = []
         return df.to_json(), unselected_data
     
+    # otherwise check if changes to selected traces, update set of unselected traces
     elif 'import-spectra' in changed_id:
         event_states = style_data[0]['visible']
         event_idxs = style_data[1]
@@ -305,6 +328,7 @@ def import_data(n_clicks, select_dataset, new_dataset, select_molecule, new_mole
     molecule_label = None
     concentration_label = None
 
+    # check all conditions for ability to upload new data
     if select_dataset == 'NEW':
         dataset_label = new_dataset
         molecule_label = new_molecule
@@ -324,12 +348,14 @@ def import_data(n_clicks, select_dataset, new_dataset, select_molecule, new_mole
 
     dataset = dbi.select_dataset(dataset_label)         # should get either exisiting or empty dataframe
 
+    # get df from selected file to import
     if import_data:
         df = pd.read_json(import_data)
         if remove_unselected:
             unselected_data = [val+1 for val in unselected_data]
             df = df.drop(df.columns[unselected_data], axis=1)
 
+    # ensure all necessary labels/files are defined for import
     if dataset_label!=None and molecule_label!=None and concentration_label!=None and not df.empty:
         dataset = da.append_to_dataset(dataset, df, molecule_label, concentration_label)
         dbi.store_dataset(dataset, dataset_label)

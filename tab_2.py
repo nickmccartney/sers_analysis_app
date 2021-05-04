@@ -172,8 +172,6 @@ def render_tab():
         }
     ),
 
-
-
 ###### Callback to plot PCA using defined pipe ######
 @app.callback(  Output('pca-plot', 'figure'),             
                 Input('dataset-training-select', 'value'),
@@ -232,8 +230,6 @@ def display_dataset(dataset_value, pipe_df, row):
             labels={'0': 'PC 1', '1': 'PC 2', '2': 'PC 3', 'color': 'Concentration'}
         )
     )
-
-
 
 ###### Callback to collapse advanced settings panel ######
 @app.callback(                          
@@ -315,8 +311,6 @@ def disp_table(dataset_value):
                 State('pipeline-table', 'data'),
 )
 def assemble_models(clicked, dataset_value, table_data):
-    # if not clicked:
-    #     return 'Please select a model'
     if not dataset_value:
         raise PreventUpdate
        
@@ -340,28 +334,3 @@ def assemble_models(clicked, dataset_value, table_data):
     
     dbi.store_model(model_frame, dataset_value)
     return "Saved " + dataset_value
-    # return dash_table.DataTable(
-    #     id='some-table',
-    #     columns=[{"name": str(i), "id": str(i)} for i in model_frame.columns],
-    #     data=model_frame.to_dict('records'),
-    # )
-
-
-# import pprint
-# @app.callback(Output('editing-prune-data-output', 'children'),    ### Prints raw data
-#               Input('pipeline-table', 'data'))
-# def display_output(rows):
-#     pruned_rows = []
-#     for row in rows:
-#         # require that all elements in a row are specified
-#         # the pruning behavior that you need may be different than this
-#         if all([cell != '' for cell in row.values()]):
-#             pruned_rows.append(row)
-
-#     return html.Div([
-#         html.Div('Raw Data'),
-#         html.Pre(pprint.pformat(rows)),
-#         html.Hr(),
-#         html.Div('Pruned Data'),
-#         html.Pre(pprint.pformat(pruned_rows)),
-#     ])
