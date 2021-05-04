@@ -4,6 +4,8 @@ import dash_bootstrap_components as dbc
 import plotly.express as px
 import dash
 from dash.dependencies import Input, Output, State
+import dash_table
+from dash.exceptions import PreventUpdate
 
 from app import app
 from app import server
@@ -21,6 +23,7 @@ from sklearn.pipeline import Pipeline
 from sklearn import preprocessing
 from sklearn import decomposition
 from sklearn.svm import SVC
+import pickle
 
 
 def render_tab():
@@ -30,115 +33,137 @@ def render_tab():
         [        
             dbc.Row(
                 [
-                    dbc.Col(html.Div(       ### Left hand PCA plot
-                            id = 'disp-dataset',
-                        ),
-                        width = 9
-                    ),
-                    
-                    dbc.Col(                ### ... and a pipe in the right hand (Pipeline assembly)
-                        html.Div([                          
-                            html.Div([
-                                html.H3('Dataset'),
-                                dcc.Dropdown(
-                                    id='dataset-training-select',
-                                    options=dataset_options,
-                                    placeholder='Select a Dataset...'
-                                ),
-                                dbc.RadioItems(
-                                    id='task-radio',
-                                    options=[
-                                        {'label': 'Molecule', 'value': 'Molecule'},
-                                        {'label': 'Concentration', 'value': 'Concentration'},
-                                    ],
-                                    value='Molecule',
-                                ),
-                                dbc.Collapse(
+                    dbc.Col(
+                        html.Div(
+                            [
+                                html.Div(                                   # Explanation Div
                                     [
-                                    dcc.Dropdown(
-                                        id='mol-select',
-                                        options=[],       ### populate options in callback from dataset select
-                                        placeholder='Select a Dataset...'
-                                    ),
+                                        html.H3('Model Training'),
+                                        html.Hr(),
+                                        html.P('This section is for training machine learning models on existing datasets. To begin, first select a dataset from the dropdown menu below.'),
+                                        html.P('Each model defaults to a certain set of scalers, decomposers, and estimators. You may view any changes to a model in the visualiser by selecting the respective model. If you are not familiar with these items, you may leave them as their default values, or read the documentation here:'),
+                                        dcc.Link(href='https://scikit-learn.org/stable/index.html#')
                                     ],
-                                    id='mol-collapse'
+                                    style={
+                                        'background-color': 'lightgrey',
+                                        'padding': '25px'
+                                    },
                                 ),
-                                dbc.Button(
-                                    "Advanced Options",
-                                    id="pipe-collapse-button",
-                                    # className="mb-3",
-                                    # color="primary",
-                                ),
-                                dbc.Collapse(
-                                    [
-                                    html.Hr(),
-                                    
-                                    html.Div([
-                                        html.H3('Scalers'),
-                                        dbc.RadioItems(
-                                            id='scalers-radio',
-                                            options=[
-                                                {'label': 'None', 'value': 'None'},
-                                                {'label': 'Standard', 'value': 'stdScaler'},
-                                                {'label': 'Min-Max', 'value': 'MinMaxScaler'},
-                                                {'label': 'Max Absolute Value', 'value': 'MaxAbsScaler'}
-                                            ],
-                                            value='MinMaxScaler',       ### Defaults currently for concentration
-                                        )
-                                    ]),
-                                    html.Hr(),
-                                    
-                                    html.Div([
-                                        html.H3('Decomposers'),
-                                        dbc.RadioItems(
-                                            id='decomp-radio',
-                                            options=[
-                                                {'label': 'None', 'value': 'None'},
-                                                {'label': 'Linear PCA', 'value': 'linearPCA'},
-                                                {'label': 'Polynomial PCA', 'value': 'polyPCA'},
-                                                {'label': 'Sigmoid PCA', 'value': 'sigmoidPCA'},
-                                                {'label': 'Cosine PCA', 'value': 'cosinePCA'}
-                                            ],
-                                            value='cosinePCA',       ### Defaults currently for concentration
-                                        ),
-                                        html.Div('# PCA Components:'),
-                                        dcc.Input(
-                                            id='PCA_n',
-                                            type='number',
-                                            value=3,
-                                            min = 1
-                                        )
-                                    ]),
-                                    html.Hr(),
-
-                                    html.Div([
-                                        html.H3('Classifiers'),
-                                        dbc.RadioItems(
-                                            id='classif-radio',
-                                            options=[
-                                                {'label': 'None', 'value': 'None'},
-                                                {'label': 'k-Nearest Neighbors', 'value': 'kNN'},
-                                                {'label': 'Support Vector Classifier', 'value': 'SVC'}
-                                            ],
-                                            value='SVC',       ### Defaults currently for concentration
-                                        ),
-                                    ]),
+                                html.Div(                                   # Dataset Select Div
+                                    [                                  
+                                        html.Div([
+                                            html.H3('1. Select Dataset'),
+                                            dcc.Dropdown(
+                                                id='dataset-training-select',
+                                                options=dataset_options,
+                                                placeholder='Select a Dataset...'
+                                            ),
+                                            html.Div('Select a dataset to begin'),
+                                        ]),
                                     ],
-                                    id="pipe-collapse",
+                                    style={
+                                        'background-color': '#b3ffb3',
+                                        'padding': '25px'
+                                    },
                                 ),
-                                html.Div(id='disp-pipe-select')
-                            ]),
-                        ],
-                        style={
-                            'background-color': 'lightgrey',
-                            'padding': '25px'
-                        },
+                                html.Div(                                   # Model Select Div
+                                    [                                  
+                                        html.H3('2. Verify Models'),
+                                        dash_table.DataTable(
+                                            style_cell={
+                                                'whiteSpace': 'normal',
+                                                'height': 'auto',
+                                            },
+                                            columns=[
+                                                {'id': 'Classification Task', 'name': 'Task', 'editable': False},
+                                                {'id': 'Molecule', 'name': 'Molecule', 'editable': False},
+                                                {'id': 'Scaler', 'name': 'Scaler', 'presentation': 'dropdown'},
+                                                {'id': 'Decomposer', 'name': 'Decomposer', 'presentation': 'dropdown'},
+                                                {'id': 'Estimator', 'name': 'Estimator', 'presentation': 'dropdown'},
+                                            ],
+                                            id='pipeline-table',
+                                            editable=True,
+                                            row_selectable='single',
+                                            dropdown={
+                                                'Scaler': {
+                                                    'options': [
+                                                        {'label': 'None', 'value': 'None'},
+                                                        {'label': 'Standard', 'value': 'stdScaler'},
+                                                        {'label': 'Min-Max', 'value': 'MinMaxScaler'},
+                                                        {'label': 'Max Absolute Value', 'value': 'MaxAbsScaler'}
+                                                    ]
+                                                },
+                                                'Decomposer': {
+                                                    'options': [
+                                                        {'label': 'None', 'value': 'None'},
+                                                        {'label': 'Linear PCA', 'value': 'linearPCA'},
+                                                        {'label': 'Polynomial PCA', 'value': 'polyPCA'},
+                                                        {'label': 'Sigmoid PCA', 'value': 'sigmoidPCA'},
+                                                        {'label': 'Cosine PCA', 'value': 'cosinePCA'}
+                                                    ]
+                                                },
+                                                'Estimator': {
+                                                    'options': [
+                                                        {'label': 'None', 'value': 'None'},
+                                                        {'label': 'k-Nearest Neighbors', 'value': 'kNN'},
+                                                        {'label': 'Support Vector Classifier', 'value': 'SVC'}
+                                                    ]
+                                                },
+                                            },
+                                            css=[{"selector": ".Select-menu-outer", "rule": "display: block !important"}],
+                                            data=[{ 'Classification Task': '---', 
+                                                    'Molecule': '---', 
+                                                    'Scaler': '---',
+                                                    'Decomposer': '---',
+                                                    'Estimator': '---'},
+                                                { 'Classification Task': '---', 
+                                                    'Molecule': '---', 
+                                                    'Scaler': '---',
+                                                    'Decomposer': '---',
+                                                    'Estimator': '---'},
+                                                { 'Classification Task': '---', 
+                                                    'Molecule': '---', 
+                                                    'Scaler': '---',
+                                                    'Decomposer': '---',
+                                                    'Estimator': '---'}]
+                                        ),
+                                        html.Div('Select a model from the table to view in the data visualiser. Click the below button to save your assembled models to the database.'),
+                                        dbc.Button(
+                                            'Train All Models', 
+                                            id='train-button',
+                                        ),
+                                        html.Div(id='editing-prune-data-output'),
+                                        html.Div(id='disp-train-success'),
+                                    ],
+                                    style={
+                                        'background-color': 'lightblue',
+                                        'padding': '25px'
+                                    },
+                                ),
+                            ]
                         ),
-                        # width = 'auto'
+                        width = 5
                     ),
-                ]
+                    dbc.Col(                                        # PCA Section
+                        html.Div(
+                            [
+                                html.H3('Data Visualiser'),
+                                html.Div(id = 'disp-dataset'),      # PCA Plot
+                                dcc.Graph(
+                                    id='pca-plot',
+                                    style={'width': 'auto', 'height': '70vh'}
+                                ),
+                            ],
+                            style={
+                                'background-color': 'LightSalmon',
+                                'padding': '25px',
+                                # 'height': '100%'
+                            },
+                        ),
+                    ),
+                ],
             ),
-            dbc.Row(dbc.Col(html.Div(id='disp-choices'))),
+
         ],
         
         style={
@@ -146,67 +171,33 @@ def render_tab():
             'padding': '30px'
         }
     ),
-    
-###### Callback to assemble all models ######
-@app.callback(  Output('disp-choices', 'children'),   
-                Input('scalers-radio', 'value'),
-                Input('decomp-radio', 'value'),
-                Input('classif-radio', 'value'),
-                Input('PCA_n', 'value')
-            )
-def display_choices(scaler_value, decomposer_value, classifier_value, n):
-    from sklearn import preprocessing
-    scalers = { 'None': preprocessing.FunctionTransformer(),
-                'stdScaler': preprocessing.StandardScaler(),
-                'MinMaxScaler': preprocessing.MinMaxScaler(),
-                'MaxAbsScaler': preprocessing.MaxAbsScaler()}
-
-    from sklearn import decomposition
-    
-    decomposers = { 'None': preprocessing.FunctionTransformer(),
-                    'linearPCA': decomposition.KernelPCA(kernel='linear', n_components = n),
-                    'polyPCA': decomposition.KernelPCA(kernel='poly', n_components = n),
-                    'rbfPCA': decomposition.KernelPCA(kernel='rbf', n_components = n),
-                    'sigmoidPCA': decomposition.KernelPCA(kernel='sigmoid', n_components = n),
-                    'cosinePCA': decomposition.KernelPCA(kernel='cosine', n_components = n)}
-
-    from sklearn.neighbors import KNeighborsClassifier
-    from sklearn.svm import SVC
-    estimators = {  'None': preprocessing.FunctionTransformer(),
-                    'kNN': KNeighborsClassifier(n_neighbors = 5),
-                    'SVC': SVC()}
-
-    # model = pipe.fit(X_values, y_labels)
-    # pickle.dump(model, open('model.sav', 'wb'))
-    # [str(scalers[i]) for i in scaler_value]
-    pipes = []
-
-    for i in scaler_value:
-        for j in decomposer_value:
-            for k in classifier_value:
-                
-                pipe = sklearn.pipeline.Pipeline([('scaler', scalers[i]), ('pca', decomposers[j]), ('est', estimators[k])])
-                pipes = [*pipes, pipe]
-    # pickle.dump(pipe, open('model.sav', 'wb'))
-    return html.Div([
-        html.Div("You are using: " + ','.join([str(p) for p in pipes])),
-        dbc.Button(
-            "Confirm"
-        )
-    ]
-    )
 
 
 
 ###### Callback to plot PCA using defined pipe ######
-@app.callback(  Output('disp-dataset', 'children'),             
+@app.callback(  Output('pca-plot', 'figure'),             
                 Input('dataset-training-select', 'value'),
-                Input('scalers-radio', 'value'),
-                Input('decomp-radio', 'value'),
-                Input('task-radio', 'value'),
-                Input('mol-select', 'value'),
+                Input('pipeline-table', 'data'),
+                Input('pipeline-table', 'selected_rows'),
 )
-def display_dataset(dataset_value, scaler_value, decomposer_value, task_value, mol):
+def display_dataset(dataset_value, pipe_df, row):
+    if not dataset_value:
+        raise PreventUpdate
+    if not pipe_df:
+        raise PreventUpdate
+    
+    # scaler_value, decomposer_value, task_value, mol
+    if row:
+        row = row[0]
+    else:
+        raise PreventUpdate
+    
+    scaler_value = pipe_df[row]['Scaler']
+    decomposer_value = pipe_df[row]['Decomposer']
+    task_value = pipe_df[row]['Classification Task']
+    mol = pipe_df[row]['Molecule']
+    
+    ### 
     from sklearn import preprocessing
     scalers = { 'None': preprocessing.FunctionTransformer(),
                 'stdScaler': preprocessing.StandardScaler(),
@@ -234,18 +225,12 @@ def display_dataset(dataset_value, scaler_value, decomposer_value, task_value, m
     
     pca_pipe = Pipeline([('scaler', scalers[scaler_value]), ('pca', decomposers[decomposer_value])])
     pca_components = pca_pipe.fit_transform(X)
-    
-    return (
-        html.Label("PCA plot using " + str(pca_pipe)),
-        dcc.Graph(
-            id='pca-plot',
-            figure=
-                px.scatter_3d(
-                pca_components, x=0, y=1, z=2, color=df.index.get_level_values(0).values,
-                labels={'0': 'PC 1', '1': 'PC 2', '2': 'PC 3', 'color': 'Concentration'}
-            ),
-            style={'height': '700px'}
-        ),
+
+    return (    
+        px.scatter_3d(
+            pca_components, x=0, y=1, z=2, color=df.index.get_level_values(0).values,
+            labels={'0': 'PC 1', '1': 'PC 2', '2': 'PC 3', 'color': 'Concentration'}
+        )
     )
 
 
@@ -295,3 +280,88 @@ def update_molecule_input(dataset_value, molecule_value):
         return options#, enabled_style, disabled_style
     else:
         return options#, disabled_style, disabled_style
+
+
+    
+###### Callback to update datatable with listed pipelines ######
+@app.callback(  Output('pipeline-table', 'data'),             
+                Input('dataset-training-select', 'value'),
+)
+def disp_table(dataset_value):
+    if not dataset_value:
+        raise PreventUpdate
+    
+    dataset = dbi.select_dataset(dataset_value)
+
+    model_frame = pd.DataFrame( data = [['Molecule', 'All', 'MinMaxScaler', 'cosinePCA', 'SVC']], 
+                                columns=['Classification Task', 'Molecule', 'Scaler', 'Decomposer', 'Estimator']) ### Assembles dataframe for models
+    for i in dataset.index.unique(0).values:
+        model_frame = model_frame.append({  'Classification Task': 'Concentration', 
+                                            'Molecule': i, 
+                                            'Scaler': 'MinMaxScaler',
+                                            'Decomposer': 'cosinePCA',
+                                            'Estimator': 'SVC'}, ignore_index = True)    # Appends new row to array
+        
+    return (
+        model_frame.to_dict('records')
+    )
+
+
+
+###### Callback to construct & store models to database on button click ######
+@app.callback(  Output('disp-train-success', 'children'),
+                Input('train-button', 'n_clicks'),             
+                State('dataset-training-select', 'value'),
+                State('pipeline-table', 'data'),
+)
+def assemble_models(clicked, dataset_value, table_data):
+    # if not clicked:
+    #     return 'Please select a model'
+    if not dataset_value:
+        raise PreventUpdate
+       
+    dataset = dbi.select_dataset(dataset_value)
+    dataset = dataset.dropna(axis='columns')                          # Remove null values
+    
+    df = pd.DataFrame.from_dict(table_data)
+    
+    arr=[]
+    model_frame = df.drop(columns=['Scaler', 'Decomposer', 'Estimator'])
+    for i in df.index.values:
+        if df.iloc[i]['Classification Task'] != 'Molecule':
+            data = dataset.loc[df.iloc[i]['Molecule']]      # Gets dataframe for conc. task
+        else:
+            data = dataset
+        
+        model = da.serialize_model(data, df.iloc[i]['Scaler'], df.iloc[i]['Decomposer'], df.iloc[i]['Estimator'])
+
+        arr = [*arr, model]
+    model_frame['Pipeline'] = arr
+    
+    dbi.store_model(model_frame, dataset_value)
+    return "Saved " + dataset_value
+    # return dash_table.DataTable(
+    #     id='some-table',
+    #     columns=[{"name": str(i), "id": str(i)} for i in model_frame.columns],
+    #     data=model_frame.to_dict('records'),
+    # )
+
+
+# import pprint
+# @app.callback(Output('editing-prune-data-output', 'children'),    ### Prints raw data
+#               Input('pipeline-table', 'data'))
+# def display_output(rows):
+#     pruned_rows = []
+#     for row in rows:
+#         # require that all elements in a row are specified
+#         # the pruning behavior that you need may be different than this
+#         if all([cell != '' for cell in row.values()]):
+#             pruned_rows.append(row)
+
+#     return html.Div([
+#         html.Div('Raw Data'),
+#         html.Pre(pprint.pformat(rows)),
+#         html.Hr(),
+#         html.Div('Pruned Data'),
+#         html.Pre(pprint.pformat(pruned_rows)),
+#     ])
