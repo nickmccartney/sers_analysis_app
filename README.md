@@ -106,6 +106,6 @@ In order to foster the exploration of effective analytical techniques, we develo
     + Results are automatically generated in order to predict the sample molecule and concentration by using the pretrained model. The previously built model from the _Train Model_ tab will be used.
     ![Test prediction](guide_src/test_results.png)
     
-5) Data Collection
+5) Data Collection  
     All data has been collected using BWSpec software and exporting collected traces as comma seperated TXT files
     + Measurement for Raman Shift spanned the indices from \[298.74, 1799.4] (cm^-1)
