@@ -94,7 +94,7 @@ Once new data has been added to a dataset, the corresponding model should be upd
 3) Developing a __custom__ model
 In order to foster the exploration of effective analytical techniques, we developed a brief model building tool within the _Train Model_ tab. By interfacing with the table that is generated once designating the dataset to train, the user can modify the default selections see if they better suit the task. The list of preprocessing and classifier options are a selection of methods included within the popular scikit-learn package. This allows unfamilar users to explore the impact of model selection.
     + Select the corresponding dataset as previously described for the __standard__ model development.
-    + Once a dataset has been selected, the table pictured below will appear. From which the dropdown columns titled __Scaler__, __Decomposer__, and __Estimator__ can be modified as desired. It is recommended that users reference the included scikit-learn documentation for a further understanding of each option as well as inspiration for further improvements.
+    + Once a dataset has been selected, the table pictured below will appear. From which the dropdown columns titled __Scaler__, __Decomposer__, __Number Components__, and __Estimator__ can be modified as desired. It is recommended that users reference the included scikit-learn documentation for a further understanding of each option as well as inspiration for further improvements.
     ![Custom train selection](guide_src/custom_train_selection.png) 
     + After fully defining the custom selections for each classification task, the user can press _Train All Models_ in order to overwrite the previously generated model.
     
@@ -105,3 +105,7 @@ In order to foster the exploration of effective analytical techniques, we develo
     + Select the obtained sample(s) for which the stored model should be used to make predictions on, this can be done with drag and drop or using the file explorer.
     + Results are automatically generated in order to predict the sample molecule and concentration by using the pretrained model. The previously built model from the _Train Model_ tab will be used.
     ![Test prediction](guide_src/test_results.png)
+    
+5) Data Collection
+    All data has been collected using BWSpec software and exporting collected traces as comma seperated TXT files
+    + Measurement for Raman Shift spanned the indices from \[298.74, 1799.4] (cm^-1)
