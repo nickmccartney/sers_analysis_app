@@ -81,7 +81,14 @@ This functionality is provided in the first tab for the application, titled _Imp
         ![Outlier identified](guide_src/error_removal.png)
 	
 ### Developing a __standard__ model
-
+Once new data has been added to a dataset, the corresponding model should be updated in order to actually consider these new samples. In the scenario of system maintnence as opposed to making modifications to employ new machine learning models, we have provided a standard set of modeling techniques which are preselected to be applied to each classification task. This creates the following workflow for updating the model.
+    + Select the corresponding dataset which needs to be trained, this works just as described for importing data and is demonstrated in the image below.
+    ![Train dataset selection](guide_src/train_dataset_selection.png)
+    
+    + Once a dataset to update has been selected, the user can select _Train All Models_ in order to update the stored model for this dataset.
+   
+   
 ### Developing a __custom__ model
+
 
 ### Testing model with newly collected sample(s)
