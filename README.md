@@ -62,7 +62,7 @@ This functionality is provided in the first tab for the application, titled _Imp
     ![Concentration selection](guide_src/concentration_selection.png)
     
     + At this point, the labeling of the newly collected data is complete. The next step is to drag and drop or use the file browser to select the data to be imported.
-        - Import files are expected to be TXT, CSV, or XLSX produced from a spectroscopy tool such as BWSpec
+        - Import files are expected to be TXT, CSV, or XLS produced from a spectroscopy tool such as BWSpec
         - After successful upload, the spectra will be displayed for user confirmation
     
     + If there are no issues until this point, the user can directly append this data to the proper location in the dataset by pressing __Import__. After successful import, the page will refresh for further entry.
