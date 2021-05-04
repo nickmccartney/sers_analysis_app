@@ -104,4 +104,4 @@ In order to foster the exploration of effective analytical techniques, we develo
     ![Dataset test selection](guide_src/test_dataset_selection.png)
     + Select the obtained sample(s) for which the stored model should be used to make predictions on, this can be done with drag and drop or using the file explorer.
     + Results are automatically generated in order to predict the sample molecule and concentration by using the pretrained model. The previously built model from the _Train Model_ tab will be used.
-    ![Test prediction](guide_src/test_prediction.png)
+    ![Test prediction](guide_src/test_results.png)
