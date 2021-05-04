@@ -23,7 +23,7 @@ def render_tab():
 
         dbc.Row([
             dbc.Col([
-                html.Label("Dataset"),
+                html.H3("New Data Import"),
                 dcc.Dropdown(
                     id='select-dataset',
                     options=dataset_options,
@@ -130,9 +130,16 @@ def render_tab():
 
             dbc.Col([
                 html.Div(
-                    dcc.Graph(
-                        id='import-spectra'
-                    ),
+                    [
+                        html.H3('Import Spectra Visualizer/Editor'),
+                        dcc.Graph(
+                            id='import-spectra'
+                        )
+                    ],
+                    style={
+                        'background-color': 'LightSalmon',
+                        'padding': '25px',
+                    },
                     id='import-spectra-container'
                 ),
 
@@ -299,7 +306,6 @@ def update_graph(import_data):
         df.drop('Raman Shift',axis=1, inplace=True)
 
         fig = go.Figure()
-        fig.update_layout(title_text='Import Data Spectra')
         fig.update_xaxes(title_text='Raman Shift cm^-1')
         fig.update_yaxes(title_text='Relative Intensity')
 
