@@ -38,9 +38,9 @@ For a full overview of the application use, you may view our demonstration [here
 ### Launching The Program
 This application has been built using _Dash_ a highly integrated python package enabling approachable web application development. As a result, the software will be hosted through a local address in your default web browser. Utilizing this package allowed the appraochable design of an application, while retaining access to the robust machine learning and in particular deep learning libraries for future improvements.
 
-The local address will host the application after running:
+The local address will host the application after running the included script with:
 ```
-$ index.py
+$ python index.py
 ```
 
 
@@ -81,7 +81,7 @@ This functionality is provided in the first tab for the application, titled _Imp
         ![Outlier identified](guide_src/error_removal.png)
 	
 ### Developing a __standard__ model
-Once new data has been added to a dataset, the corresponding model should be updated in order to actually consider these new samples. In the scenario of system maintnence as opposed to making modifications to employ new machine learning models, we have provided a standard set of modeling techniques which are preselected to be applied to each classification task. This creates the following workflow for updating the model.
+Once new data has been added to a dataset, the corresponding model should be updated in order to actually consider these new samples. In the scenario of system maintnence as opposed to making modifications to employ new machine learning models, we have provided a standard set of modeling techniques which are preselected to be applied to each classification task. This creates the following workflow for updating the model within the tab titled _Train Model_.
     + Select the corresponding dataset which needs to be trained, this works just as described for importing data and is demonstrated in the image below.
     ![Train dataset selection](guide_src/train_dataset_selection.png)
     
@@ -89,6 +89,7 @@ Once new data has been added to a dataset, the corresponding model should be upd
    
    
 ### Developing a __custom__ model
+In order to foster the exploration of effective analytical techniques, we developed a brief model building tool within the _Train Model_ tab. By interfacing with the table that is generated once designating the dataset to train, the user can modify the default selections see if they better suit the task. The list of preprocessing and classifier options are a selection of methods included within the popular scikit-learn package. This allows unfamilar users to explore the impact of model selection.
 
 
 ### Testing model with newly collected sample(s)
