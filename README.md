@@ -32,8 +32,6 @@ In order to become familiar with the project, we have included a thorough descri
 + SERS substrate research and development
 + Mock field deployment and testing 
 
-For a full overview of the application use, you may view our demonstration [here]().
-
 
 ### Launching The Program
 This application has been built using _Dash_ a highly integrated python package enabling approachable web application development. As a result, the software will be hosted through a local address in your default web browser. Utilizing this package allowed the appraochable design of an application, while retaining access to the robust machine learning and in particular deep learning libraries for future improvements.
