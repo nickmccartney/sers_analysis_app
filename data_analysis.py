@@ -39,29 +39,8 @@ def append_to_dataset(dataset, df, molecule, concentration):
     return dataset
 
 
-### Pipeline dicts
-from sklearn import preprocessing
-scalers = { 'None': preprocessing.FunctionTransformer(),
-            'stdScaler': preprocessing.StandardScaler(),
-            'MinMaxScaler': preprocessing.MinMaxScaler(),
-            'MaxAbsScaler': preprocessing.MaxAbsScaler()}
 
-from sklearn import decomposition
-n=3
-decomposers = { 'None': preprocessing.FunctionTransformer(),
-                'linearPCA': decomposition.KernelPCA(kernel='linear', n_components = n),
-                'polyPCA': decomposition.KernelPCA(kernel='poly', n_components = n),
-                'rbfPCA': decomposition.KernelPCA(kernel='rbf', n_components = n),
-                'sigmoidPCA': decomposition.KernelPCA(kernel='sigmoid', n_components = n),
-                'cosinePCA': decomposition.KernelPCA(kernel='cosine', n_components = n)}
-
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.svm import SVC
-estimators = {  'None': preprocessing.FunctionTransformer(),
-                'kNN': KNeighborsClassifier(n_neighbors = 5),
-                'SVC': SVC()}
-
-def serialize_model(df, scaler_value, decomposer_value, estimator_value):   # Serialize trained models
+def serialize_model(df, scaler_value, decomposer_value, n, estimator_value):   # Serialize trained models
     '''
         returns a fitted pipeline in a serialized format
         - {dataframe} df: Dataframe, first index level serves as labels for fitted model
@@ -70,6 +49,27 @@ def serialize_model(df, scaler_value, decomposer_value, estimator_value):   # Se
         - {str} estimator_value: key for estimators dict 
     '''
 
+    ### Pipeline dicts
+    from sklearn import preprocessing
+    scalers = { 'None': preprocessing.FunctionTransformer(),
+                'stdScaler': preprocessing.StandardScaler(),
+                'MinMaxScaler': preprocessing.MinMaxScaler(),
+                'MaxAbsScaler': preprocessing.MaxAbsScaler()}
+
+    from sklearn import decomposition
+    decomposers = { 'None': preprocessing.FunctionTransformer(),
+                    'linearPCA': decomposition.KernelPCA(kernel='linear', n_components = n),
+                    'polyPCA': decomposition.KernelPCA(kernel='poly', n_components = n),
+                    'rbfPCA': decomposition.KernelPCA(kernel='rbf', n_components = n),
+                    'sigmoidPCA': decomposition.KernelPCA(kernel='sigmoid', n_components = n),
+                    'cosinePCA': decomposition.KernelPCA(kernel='cosine', n_components = n)}
+
+    from sklearn.neighbors import KNeighborsClassifier
+    from sklearn.svm import SVC
+    estimators = {  'None': preprocessing.FunctionTransformer(),
+                    'kNN': KNeighborsClassifier(n_neighbors = 5),
+                    'SVC': SVC()}
+    
     pipe = Pipeline([('scaler', scalers[scaler_value]), ('pca', decomposers[decomposer_value]), ('estimator', estimators[estimator_value])])    # Assembles a pipeline
     fitted = pipe.fit(df.values, df.index.get_level_values(0))                                                  # fits model to concentration features of current mol.
     serialized = pickle.dumps(fitted)                                                                           # Serializes fitted model  

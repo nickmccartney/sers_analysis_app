@@ -79,6 +79,7 @@ def render_tab():
                                                 {'id': 'Molecule', 'name': 'Molecule', 'editable': False},
                                                 {'id': 'Scaler', 'name': 'Scaler', 'presentation': 'dropdown'},
                                                 {'id': 'Decomposer', 'name': 'Decomposer', 'presentation': 'dropdown'},
+                                                {'id': '# Components', 'name': '# Components', 'type': 'numeric'},
                                                 {'id': 'Estimator', 'name': 'Estimator', 'presentation': 'dropdown'},
                                             ],
                                             id='pipeline-table',
@@ -231,52 +232,6 @@ def display_dataset(dataset_value, pipe_df, row):
         )
     )
 
-###### Callback to collapse advanced settings panel ######
-@app.callback(                          
-    Output("pipe-collapse", "is_open"),
-    [Input("pipe-collapse-button", "n_clicks")],
-    [State("pipe-collapse", "is_open")],
-)
-def toggle_pipe_collapse(n, is_open):
-    if n:
-        return not is_open
-    return is_open
-
-
-
-###### Callback to uncollapse molecule selector when doing concentration task ######
-@app.callback(                          
-    Output("mol-collapse", "is_open"),
-    [Input("task-radio", "value")],
-    [State("mol-collapse", "is_open")],
-)
-def toggle_mol_collapse(task, is_open):
-    if task == 'Concentration':
-        return 1
-    return 0
-
-
-
-###### Callback to populate molecule selection dropdown ######
-@app.callback(Output('mol-select', 'options'),      
-              Input('dataset-training-select', 'value'),
-              Input('mol-select', 'value')
-)
-def update_molecule_input(dataset_value, molecule_value):
-    # enabled_style = {'display': 'block'}
-    # disabled_style = {'display': 'none'}
-    options = []
-
-    if dataset_value != None:
-        dataset = dbi.select_dataset(dataset_value)
-
-        molecules = dataset.index.get_level_values('Molecule').unique().to_numpy()              # list unique molecule labels within dataset
-        options = [{'label': name, 'value': name} for name in molecules]
-        
-        return options#, enabled_style, disabled_style
-    else:
-        return options#, disabled_style, disabled_style
-
 
     
 ###### Callback to update datatable with listed pipelines ######
@@ -289,13 +244,14 @@ def disp_table(dataset_value):
     
     dataset = dbi.select_dataset(dataset_value)
 
-    model_frame = pd.DataFrame( data = [['Molecule', 'All', 'MinMaxScaler', 'cosinePCA', 'SVC']], 
-                                columns=['Classification Task', 'Molecule', 'Scaler', 'Decomposer', 'Estimator']) ### Assembles dataframe for models
+    model_frame = pd.DataFrame( data = [['Molecule', 'All', 'MinMaxScaler', 'cosinePCA', '3', 'SVC']], 
+                                columns=['Classification Task', 'Molecule', 'Scaler', 'Decomposer', '# Components', 'Estimator']) ### Assembles dataframe for models
     for i in dataset.index.unique(0).values:
         model_frame = model_frame.append({  'Classification Task': 'Concentration', 
                                             'Molecule': i, 
                                             'Scaler': 'MinMaxScaler',
                                             'Decomposer': 'cosinePCA',
+                                            '# Components': '3',
                                             'Estimator': 'SVC'}, ignore_index = True)    # Appends new row to array
         
     return (
@@ -319,6 +275,7 @@ def assemble_models(clicked, dataset_value, table_data):
     
     df = pd.DataFrame.from_dict(table_data)
     
+    
     arr=[]
     model_frame = df.drop(columns=['Scaler', 'Decomposer', 'Estimator'])
     for i in df.index.values:
@@ -327,7 +284,7 @@ def assemble_models(clicked, dataset_value, table_data):
         else:
             data = dataset
         
-        model = da.serialize_model(data, df.iloc[i]['Scaler'], df.iloc[i]['Decomposer'], df.iloc[i]['Estimator'])
+        model = da.serialize_model(data, df.iloc[i]['Scaler'], df.iloc[i]['Decomposer'], df.iloc[i]['# Components'], df.iloc[i]['Estimator'])
 
         arr = [*arr, model]
     model_frame['Pipeline'] = arr

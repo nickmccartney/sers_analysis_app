@@ -1,5 +1,8 @@
 # Ignore pychache
 __pychache__/
 
+# Ignore .ipynb
+*.ipynb
+
 # Ignore any SQL databases for now
 # .db
