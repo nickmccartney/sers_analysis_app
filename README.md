@@ -40,7 +40,7 @@ The local address will host the application after running the included script wi
 ```
 $ python index.py
 ```
-
+After this, the local port that hosts the application will be provided. Simply ctrl-click or copy paste this into a web browser to view the window.
 
 ### Importing New SERS Samples
 When testing an SERS technology, a large amount of data is needed to generate useful models, especially for the promising future endeavors in _Deep Learning_. 
