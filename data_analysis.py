@@ -49,6 +49,8 @@ def serialize_model(df, scaler_value, decomposer_value, n, estimator_value):   #
         - {str} estimator_value: key for estimators dict 
     '''
 
+    n = (int)(n)
+    
     ### Pipeline dicts
     from sklearn import preprocessing
     scalers = { 'None': preprocessing.FunctionTransformer(),
